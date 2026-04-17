@@ -192,6 +192,8 @@ private:
 		ClearEnumKeys(m_vecSearchFileKeys);
 		ClearEnumKeys(m_vecExceptFolderKeys);
 		ClearEnumKeys(m_vecSearchFolderKeys);
+		ClearEnumKeys(m_vecExceptAbsFileKeys);
+		ClearEnumKeys(m_vecExceptAbsFolderKeys);
 		m_vecExceptFileRegexPatterns.clear();
 		return;
 	}
