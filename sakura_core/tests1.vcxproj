@@ -135,6 +135,9 @@
     <ClCompile Include="..\src\test\resources\printEFunctionCode.cpp" />
     <ClCompile Include="..\src\test\cpp\tests1\test-cclipboard.cpp" />
     <ClCompile Include="..\src\test\cpp\tests1\test-ccodebase.cpp" />
+    <ClCompile Include="..\src\test\cpp\tests1\test-ccodefactory.cpp" />
+    <ClCompile Include="..\src\test\cpp\tests1\test-ciobridge.cpp" />
+    <ClCompile Include="..\src\test\cpp\tests1\test-cstream.cpp" />
     <ClCompile Include="..\src\test\cpp\tests1\test-ccommandline.cpp" />
     <ClCompile Include="..\src\test\cpp\tests1\test-cconvert.cpp" />
     <ClCompile Include="..\src\test\cpp\tests1\test-cdecode.cpp" />
