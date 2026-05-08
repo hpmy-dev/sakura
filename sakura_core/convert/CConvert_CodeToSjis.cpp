@@ -26,12 +26,13 @@ bool CConvert_CodeToSjis::DoConvert(CNativeW* pcData)
 {
 	// バッファの内容がANSI版相当になるよう Unicode→SJIS 変換する
 	CMemory cmemSjis;
-	auto pCodeSjis = CCodeFactory::CreateCodeBase(CODE_SJIS);
-	if( pCodeSjis == nullptr ){
+	std::unique_ptr<CCodeBase> pCodeSjis(
+		CCodeFactory::CreateCodeBase(CODE_SJIS)
+	);
+	if( !pCodeSjis ){
 		return false; // 変換失敗
 	}
 	pCodeSjis->UnicodeToCode(*pcData, &cmemSjis);
-	delete pCodeSjis;
 
 	// xxx→SJIS 変換後にバッファ内容をUNICODE版相当に戻す（SJIS→Unicode）のと等価な結果を得るために
 	// xxx→Unicode 変換する
@@ -46,7 +47,7 @@ bool CConvert_CodeToSjis::DoConvert(CNativeW* pcData)
 	}
 
 	// nullptr チェックを追加
-	if( pcCodeBase == nullptr ){
+	if( !pcCodeBase ){
 		return false; // 変換失敗
 	}
 
