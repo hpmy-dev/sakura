@@ -61,7 +61,7 @@ SLoadFromCodeResult CCodeFactory::LoadFromCode(ECodeType eCodeType, std::string_
 	CNativeW cDest;
 
 	// nullptr チェックを追加
-	auto pCodeBase = CreateCodeBase(eCodeType);
+	std::unique_ptr<CCodeBase> pCodeBase(CreateCodeBase(eCodeType));
 	if( !pCodeBase ){
 		// エラー結果を返す
 		return SLoadFromCodeResult{ RESULT_FAILURE, code, std::size(code), std::wstring() };
@@ -90,7 +90,7 @@ SConvertToCodeResult CCodeFactory::ConvertToCode(ECodeType eCodeType, std::wstri
 	CMemory cDest;
 
 	// nullptr チェックを追加
-	auto pCodeBase = CreateCodeBase(eCodeType);
+	std::unique_ptr<CCodeBase> pCodeBase(CreateCodeBase(eCodeType));
 	if( !pCodeBase ){
 		// エラー結果を返す
 		return SConvertToCodeResult{ RESULT_FAILURE, wide, std::size(wide), std::string() };

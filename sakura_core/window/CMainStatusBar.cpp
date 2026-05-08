@@ -28,8 +28,10 @@
 	std::wstring buffer(32, L'\0');
 
 	// nullptr チェックを追加
-	auto pCodeBase = CCodeFactory::CreateCodeBase(eCodeType);
-	if( pCodeBase == nullptr ){
+	std::unique_ptr<CCodeBase> pCodeBase(
+		CCodeFactory::CreateCodeBase(eCodeType)
+	);
+	if( !pCodeBase ){
 		// エラー時はデフォルト値を返す
 		return L"[Invalid CodeType]";
 	}
@@ -37,15 +39,14 @@
 	// Hex変換
 	if (pCodeBase->UnicodeToHex(std::data(wide), int(std::size(wide)), std::data(buffer), &sStatusBar) != RESULT_COMPLETE) {
 		// 変換に失敗したらUNICODEで変換する
-		delete pCodeBase;
-		auto pCodeBaseUtf16 = CCodeFactory::CreateCodeBase(CODE_UTF16BE);
-		if( pCodeBaseUtf16 != nullptr ){
+		std::unique_ptr<CCodeBase> pCodeBaseUtf16(
+			CCodeFactory::CreateCodeBase(CODE_UTF16BE)
+		);
+		if( pCodeBaseUtf16 ){
 			pCodeBaseUtf16->UnicodeToHex(std::data(wide), int(std::size(wide)), std::data(buffer), &sStatusBar);
-			delete pCodeBaseUtf16;
 		}
-	} else {
-		delete pCodeBase;
 	}
+	// pCodeBase と pCodeBaseUtf16 は自動的に解放される
 
 	// 出力先バッファのサイズを調整する
 	buffer.resize(::wcsnlen(buffer.c_str(), std::size(buffer)));
