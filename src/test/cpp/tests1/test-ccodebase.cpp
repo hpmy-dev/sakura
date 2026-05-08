@@ -161,25 +161,35 @@ TEST(CCodeBase, codeSJis)
 	constexpr const auto& mbsAscii = "\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F";
 	constexpr const auto& wcsAscii = L"\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F";
 
+	// 正常系: 7bit ASCII範囲（等価変換）
 	auto result1 = CCodeFactory::LoadFromCode(eCodeType, mbsAscii);
 	EXPECT_THAT(result1.destination, StrEq(wcsAscii));
 	EXPECT_THAT(result1, IsTrue());
+	EXPECT_EQ(std::string_view{mbsAscii}, result1.source);
+	EXPECT_EQ(std::string_view{mbsAscii}.size(), result1.consumed);
 
 	auto cresult1 = CCodeFactory::ConvertToCode(eCodeType, result1.destination);
 	EXPECT_THAT(cresult1.destination, StrEq(mbsAscii));
 	EXPECT_THAT(cresult1, IsTrue());
+	EXPECT_EQ(std::wstring_view{wcsAscii}, cresult1.source);
+	EXPECT_EQ(std::wstring_view{wcsAscii}.size(), cresult1.consumed);
 
 	// かな漢字の変換（Shift-JIS仕様）
 	constexpr const auto& wcsKanaKanji = L"ｶﾅかなカナ漢字";
 	constexpr const auto& mbsKanaKanji = "\xB6\xC5\x82\xA9\x82\xC8\x83\x4A\x83\x69\x8A\xBF\x8E\x9A";
 
+	// 正常系: かな漢字の変換（Shift-JIS仕様）
 	auto result2 = CCodeFactory::LoadFromCode(eCodeType, mbsKanaKanji);
 	EXPECT_THAT(result2.destination, StrEq(wcsKanaKanji));
 	EXPECT_THAT(result2, IsTrue());
+	EXPECT_EQ(std::string_view{mbsKanaKanji}, result2.source);
+	EXPECT_EQ(std::string_view{mbsKanaKanji}.size(), result2.consumed);
 
 	auto cresult2 = CCodeFactory::ConvertToCode(eCodeType, result2.destination);
 	EXPECT_THAT(cresult2.destination, StrEq(mbsKanaKanji));
 	EXPECT_THAT(cresult2, IsTrue());
+	EXPECT_EQ(std::wstring_view{wcsKanaKanji}, cresult2.source);
+	EXPECT_EQ(std::wstring_view{wcsKanaKanji}.size(), cresult2.consumed);
 
 	// Unicodeから変換できない文字（Shift-JIS仕様）
 	constexpr const auto& mbsCantConvSJis =
@@ -193,6 +203,7 @@ TEST(CCodeBase, codeSJis)
 		L"\xDC81\n\xDC81\x7F\xDC81\xDCFD\xDC81\xDCFE\xDC81\xDCFF"
 		;
 
+	// 異常系: Unicodeから変換できない文字（Shift-JIS仕様）
 	auto result3 = CCodeFactory::LoadFromCode(eCodeType, mbsCantConvSJis);
 	EXPECT_THAT(result3.destination, StrEq(wcsCantConvSJis));
 	EXPECT_THAT(result3, IsTrue());
@@ -212,27 +223,38 @@ TEST(CCodeBase, codeJis)
 	constexpr const auto& mbsAscii = "\x1\x2\x3\x4\x5\x6\a\b\t\n\v\f\r\xE\xF\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F";
 	constexpr const auto& wcsAscii = L"\x1\x2\x3\x4\x5\x6\a\b\t\n\v\f\r\xE\xF\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\xDC1B\xDC1C\xDC1D\xDC1E\xDC1F\xDC20!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F";
 
+	// 正常系: 7bit ASCII範囲（等価変換）
 	auto result1 = CCodeFactory::LoadFromCode(eCodeType, mbsAscii);
 	EXPECT_THAT(result1.destination, StrEq(L"\x1\x2\x3\x4\x5\x6\a\b\t\n\v\f\r\xE\xF\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A???!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~?"));
 	EXPECT_THAT(result1, IsFalse());
+	EXPECT_EQ(std::string_view{mbsAscii}, result1.source);
+	EXPECT_EQ(std::string_view{mbsAscii}.size(), result1.consumed);
 
 	result1.destination = wcsAscii;
 
 	auto cresult1 = CCodeFactory::ConvertToCode(eCodeType, result1.destination);
 	EXPECT_THAT(cresult1.destination, StrEq("\x1\x2\x3\x4\x5\x6\a\b\t\n\v\f\r\xE\xF\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A??????!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F"));
 	EXPECT_THAT(cresult1, IsFalse());
+	EXPECT_EQ(std::wstring_view{wcsAscii}, cresult1.source);
+	EXPECT_EQ(std::wstring_view{wcsAscii}.size(), cresult1.consumed);
 
 	constexpr const auto& wcsKanaKanji = L"ｶﾅかなカナ漢字";
 	constexpr const auto& mbsKanaKanji = "\x1B(I6E\x1B$B$+$J%+%J4A;z\x1B(B";
 
+	// 正常系: かな漢字の変換（JIS仕様）
 	auto result2 = CCodeFactory::LoadFromCode(eCodeType, mbsKanaKanji);
 	EXPECT_THAT(result2.destination, StrEq(wcsKanaKanji));
 	EXPECT_THAT(result2, IsTrue());
+	EXPECT_EQ(std::string_view{mbsKanaKanji}, result2.source);
+	EXPECT_EQ(std::string_view{mbsKanaKanji}.size(), result2.consumed);
 
 	auto cresult2 = CCodeFactory::ConvertToCode(eCodeType, result2.destination);
 	EXPECT_THAT(cresult2.destination, StrEq(mbsKanaKanji));
 	EXPECT_THAT(cresult2, IsTrue());
+	EXPECT_EQ(std::wstring_view{wcsKanaKanji}, cresult2.source);
+	EXPECT_EQ(std::wstring_view{wcsKanaKanji}.size(), cresult2.consumed);
 
+	// 異常系: 変換できない文字や不正データは欠損ありで返ること
 	EXPECT_THAT(CCodeFactory::LoadFromCode(eCodeType, "\x1B$B\xFF\xFF\x1B(B").result, RESULT_LOSESOME);
 	EXPECT_THAT(CCodeFactory::LoadFromCode(eCodeType, "\x1B(D33\x1B(B").result, RESULT_LOSESOME);
 	EXPECT_THAT(CCodeFactory::ConvertToCode(eCodeType, L"\u9DD7").result, RESULT_LOSESOME);
