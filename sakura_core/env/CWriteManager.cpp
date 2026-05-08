@@ -78,9 +78,9 @@ EConvertResult CWriteManager::WriteFile_From_CDocLineMgr(
 				if(e==RESULT_FAILURE){
 					nRetVal=RESULT_FAILURE;
 					ErrorMessage(
-					GetEditWndHwndSafe(),
-					LS(STR_FILESAVE_CONVERT_ERROR),
-					sSaveInfo.cFilePath.c_str()
+						GetEditWndHwndSafe(),
+						LS(STR_FILESAVE_CONVERT_ERROR),
+						sSaveInfo.cFilePath.c_str()
 					);
 					throw CError_FileWrite();
 				}
