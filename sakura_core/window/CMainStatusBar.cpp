@@ -27,10 +27,24 @@
 	// 出力先バッファを確保する
 	std::wstring buffer(32, L'\0');
 
+	// nullptr チェックを追加
+	auto pCodeBase = CCodeFactory::CreateCodeBase(eCodeType);
+	if( pCodeBase == nullptr ){
+		// エラー時はデフォルト値を返す
+		return L"[Invalid CodeType]";
+	}
+
 	// Hex変換
-	if (CCodeFactory::CreateCodeBase(eCodeType)->UnicodeToHex(std::data(wide), int(std::size(wide)), std::data(buffer), &sStatusBar) != RESULT_COMPLETE) {
+	if (pCodeBase->UnicodeToHex(std::data(wide), int(std::size(wide)), std::data(buffer), &sStatusBar) != RESULT_COMPLETE) {
 		// 変換に失敗したらUNICODEで変換する
-		CCodeFactory::CreateCodeBase(CODE_UTF16BE)->UnicodeToHex(std::data(wide), int(std::size(wide)), std::data(buffer), &sStatusBar);
+		delete pCodeBase;
+		auto pCodeBaseUtf16 = CCodeFactory::CreateCodeBase(CODE_UTF16BE);
+		if( pCodeBaseUtf16 != nullptr ){
+			pCodeBaseUtf16->UnicodeToHex(std::data(wide), int(std::size(wide)), std::data(buffer), &sStatusBar);
+			delete pCodeBaseUtf16;
+		}
+	} else {
+		delete pCodeBase;
 	}
 
 	// 出力先バッファのサイズを調整する

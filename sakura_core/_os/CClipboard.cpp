@@ -520,7 +520,11 @@ bool CClipboard::SetClipboardByFormat(const CStringRef& cstr, const wchar_t* pFo
 			nTextByteLen = cstr.GetLength() * sizeof(wchar_t);
 		}else{
 			CCodeBase* pCode = CCodeFactory::CreateCodeBase(eMode, GetDllShareData().m_Common.m_sFile.GetAutoMIMEdecode());
+			if( pCode == nullptr ){
+				return false;
+			}
 			if( RESULT_FAILURE == pCode->UnicodeToCode(cstr, &cmemBuf) ){
+				delete pCode;
 				return false;
 			}
 			delete pCode;
@@ -648,11 +652,16 @@ bool CClipboard::GetClipboardByFormat(CNativeW& mem, const wchar_t* pFormatName,
 				cmem.SetRawData(pData, nLength);
 				if( nullptr != cmem.GetRawPtr() ){
 					CCodeBase* pCode = CCodeFactory::CreateCodeBase(eMode, GetDllShareData().m_Common.m_sFile.GetAutoMIMEdecode());
-					if( RESULT_FAILURE == pCode->CodeToUnicode(cmem, &mem) ){
+					if( pCode == nullptr ){
 						mem.SetString(L"");
 						retVal = false;
+					}else{
+						if( RESULT_FAILURE == pCode->CodeToUnicode(cmem, &mem) ){
+							mem.SetString(L"");
+							retVal = false;
+						}
+						delete pCode;
 					}
-					delete pCode;
 				}
 			}
 		}

@@ -27,7 +27,12 @@ bool CConvert_CodeAutoToSjis::DoConvert(CNativeW* pcData)
 {
 	// Shift-JISに変換する（変換エラーは無視する）
 	CMemory cmemSjis;
-	CCodeFactory::CreateCodeBase(CODE_SJIS)->UnicodeToCode(*pcData, &cmemSjis);
+	auto pCodeSjis = CCodeFactory::CreateCodeBase(CODE_SJIS);
+	if( pCodeSjis == nullptr ){
+		return false; // 変換失敗
+	}
+	pCodeSjis->UnicodeToCode(*pcData, &cmemSjis);
+	delete pCodeSjis;
 
 	// バイナリシーケンスの文字コードを自動検出する
 	CCodeMediator m(m_sEncodingConfig);
@@ -54,6 +59,11 @@ bool CConvert_CodeAutoToSjis::DoConvert(CNativeW* pcData)
 	default:
 		// サポートされていない変換は失敗扱いにする(変換しない)
 		return false;
+	}
+
+	// nullptr チェックを追加
+	if( pcCodeBase == nullptr ){
+		return false; // 変換失敗
 	}
 
 	// 検出された文字コードに基づいてUnicode変換する（変換エラーは無視する）

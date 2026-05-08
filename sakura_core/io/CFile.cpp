@@ -138,8 +138,9 @@ bool CFile::FileLock( EShareMode eShareMode, bool bMsg )
 		case SHAREMODE_DENY_WRITE:		pszMode = LS(STR_EXCLU_DENY_WRITE); break;
 		default:						pszMode = LS(STR_EXCLU_UNDEFINED); break;
 		}
+		// 安全なHWND取得（CEditWndが未初期化でもクラッシュしない）
 		TopWarningMessage(
-			CEditWnd::getInstance()->GetHwnd(),
+			GetEditWndHwndSafe(),
 			LS(STR_FILE_LOCK_ERR),
 			GetFilePathClass().IsValidPath() ? GetFilePath() : LS(STR_NO_TITLE1),
 			pszMode
