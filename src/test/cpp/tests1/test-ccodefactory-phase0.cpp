@@ -67,8 +67,8 @@ TEST(CCodeFactory, LoadFromCode_ValidCodeType)
 	// RESULT_COMPLETE が返ることを確認
 	ASSERT_EQ(RESULT_COMPLETE, result.result);
 	
-	// 変換結果が空でないことを確認
-	ASSERT_FALSE(result.destination.empty());
+	// 変換結果が正しい Unicode 文字列であることを確認 (= "テスト")
+	ASSERT_EQ(L"\u30C6\u30B9\u30C8", result.destination);
 }
 
 /*!
@@ -86,6 +86,7 @@ TEST(CCodeFactory, ConvertToCode_ValidCodeType)
 	// RESULT_COMPLETE が返ることを確認
 	ASSERT_EQ(RESULT_COMPLETE, result.result);
 	
-	// 変換結果が空でないことを確認
-	ASSERT_FALSE(result.destination.empty());
+	// 変換結果が UTF-8 バイト列であることを確認 (= UTF-8 of "テスト")
+	const std::string expectedUtf8 = "\xE3\x83\x86\xE3\x82\xB9\xE3\x83\x88";
+	ASSERT_EQ(expectedUtf8, result.destination);
 }

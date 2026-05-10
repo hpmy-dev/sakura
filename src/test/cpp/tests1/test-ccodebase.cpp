@@ -196,6 +196,8 @@ TEST(CCodeBase, codeSJis)
 	auto result3 = CCodeFactory::LoadFromCode(eCodeType, mbsCantConvSJis);
 	EXPECT_THAT(result3.destination, StrEq(wcsCantConvSJis));
 	EXPECT_THAT(result3, IsTrue());
+	EXPECT_EQ(std::string_view{mbsCantConvSJis}, result3.source);			// 👈 source 検証追加
+	EXPECT_EQ(std::string_view{mbsCantConvSJis}.size(), result3.consumed);	// 👈 consumed 検証追加
 
 	constexpr const auto& wcsOGuy = L"森鷗外";
 	constexpr const auto& mbsOGuy = "\x90\x58\x3F\x8A\x4F";
@@ -203,6 +205,8 @@ TEST(CCodeBase, codeSJis)
 	const auto cresult4 = CCodeFactory::ConvertToCode(eCodeType, wcsOGuy);
 	EXPECT_THAT(cresult4.destination, StrEq(mbsOGuy));
 	EXPECT_THAT(cresult4, IsFalse());
+	EXPECT_EQ(std::wstring_view{wcsOGuy}, cresult4.source);			// 👈 source 検証追加
+	EXPECT_EQ(std::wstring_view{wcsOGuy}.size(), cresult4.consumed);	// 👈 consumed 検証追加
 }
 
 TEST(CCodeBase, codeJis)
@@ -233,9 +237,24 @@ TEST(CCodeBase, codeJis)
 	EXPECT_THAT(cresult2.destination, StrEq(mbsKanaKanji));
 	EXPECT_THAT(cresult2, IsTrue());
 
-	EXPECT_THAT(CCodeFactory::LoadFromCode(eCodeType, "\x1B$B\xFF\xFF\x1B(B").result, RESULT_LOSESOME);
-	EXPECT_THAT(CCodeFactory::LoadFromCode(eCodeType, "\x1B(D33\x1B(B").result, RESULT_LOSESOME);
-	EXPECT_THAT(CCodeFactory::ConvertToCode(eCodeType, L"\u9DD7").result, RESULT_LOSESOME);
+	// 👈 異常系: source/consumed も検証
+	constexpr const auto& mbsJisInvalid1 = "\x1B$B\xFF\xFF\x1B(B";
+	auto result_jis1 = CCodeFactory::LoadFromCode(eCodeType, mbsJisInvalid1);
+	EXPECT_THAT(result_jis1.result, RESULT_LOSESOME);
+	EXPECT_EQ(std::string_view{mbsJisInvalid1}, result_jis1.source);
+	EXPECT_EQ(std::string_view{mbsJisInvalid1}.size(), result_jis1.consumed);
+
+	constexpr const auto& mbsJisInvalid2 = "\x1B(D33\x1B(B";
+	auto result_jis2 = CCodeFactory::LoadFromCode(eCodeType, mbsJisInvalid2);
+	EXPECT_THAT(result_jis2.result, RESULT_LOSESOME);
+	EXPECT_EQ(std::string_view{mbsJisInvalid2}, result_jis2.source);
+	EXPECT_EQ(std::string_view{mbsJisInvalid2}.size(), result_jis2.consumed);
+
+	constexpr const auto& wcsJisInvalid3 = L"\u9DD7";
+	auto cresult_jis3 = CCodeFactory::ConvertToCode(eCodeType, wcsJisInvalid3);
+	EXPECT_THAT(cresult_jis3.result, RESULT_LOSESOME);
+	EXPECT_EQ(std::wstring_view{wcsJisInvalid3}, cresult_jis3.source);
+	EXPECT_EQ(std::wstring_view{wcsJisInvalid3}.size(), cresult_jis3.consumed);
 }
 
 TEST(CCodeBase, codeEucJp)
@@ -271,6 +290,8 @@ TEST(CCodeBase, codeEucJp)
 	const auto cresult4 = CCodeFactory::ConvertToCode(eCodeType, wcsOGuy);
 	EXPECT_THAT(cresult4.destination, StrEq(mbsOGuy));
 	EXPECT_THAT(cresult4, IsFalse());
+	EXPECT_EQ(std::wstring_view{wcsOGuy}, cresult4.source);			// 👈 source 検証追加
+	EXPECT_EQ(std::wstring_view{wcsOGuy}.size(), cresult4.consumed);	// 👈 consumed 検証追加
 }
 
 TEST(CCodeBase, codeLatin1)
@@ -684,3 +705,108 @@ INSTANTIATE_TEST_SUITE_P(GetEolCases
 );
 
 } // namespace  convert
+
+namespace window {
+
+// =========================================================
+// UnicodeToHexTest — CMainStatusBar::UnicodeToHex 回帰テスト
+//
+// PR#2 にて削除されたブロックを復元。
+// CMainStatusBar::UnicodeToHex に導入された unique_ptr 化の
+// リグレッションがないことを検証する。
+// =========================================================
+
+static CommonSetting_Statusbar MakeStatusbar(
+	bool dispUniInSjis = false, bool dispUniInJis  = false,
+	bool dispUniInEuc  = false, bool dispUtf8Cp   = false,
+	bool dispSPCp      = false
+)
+{
+	CommonSetting_Statusbar s{};
+	s.m_bDispUniInSjis     = dispUniInSjis ? TRUE : FALSE;
+	s.m_bDispUniInJis      = dispUniInJis  ? TRUE : FALSE;
+	s.m_bDispUniInEuc      = dispUniInEuc  ? TRUE : FALSE;
+	s.m_bDispUtf8Codepoint = dispUtf8Cp   ? TRUE : FALSE;
+	s.m_bDispSPCodepoint   = dispSPCp     ? TRUE : FALSE;
+	return s;
+}
+
+using UnicodeToHexTestParam = std::tuple<ECodeType, CommonSetting_Statusbar, std::wstring, std::wstring>;
+
+struct UnicodeToHexTest : public ::testing::TestWithParam<UnicodeToHexTestParam> {};
+
+TEST_P(UnicodeToHexTest, DoConvert)
+{
+	const auto  eCodeType  = std::get<0>(GetParam());
+	const auto& sStatusbar = std::get<1>(GetParam());
+	const auto& wide       = std::get<2>(GetParam());
+	const auto& expected   = std::get<3>(GetParam());
+	EXPECT_EQ(expected, CMainStatusBar::UnicodeToHex(eCodeType, wide, sStatusbar));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+	UnicodeToHexCases, UnicodeToHexTest,
+	::testing::Values(
+		// ―― [1] ASCII 'A' 全11コードタイプ デフォルト設定 ――
+		UnicodeToHexTestParam{ CODE_SJIS,     MakeStatusbar(), L"A", L"41" },
+		UnicodeToHexTestParam{ CODE_JIS,      MakeStatusbar(), L"A", L"41" },
+		UnicodeToHexTestParam{ CODE_EUC,      MakeStatusbar(), L"A", L"41" },
+		UnicodeToHexTestParam{ CODE_UTF8,     MakeStatusbar(), L"A", L"41" },
+		UnicodeToHexTestParam{ CODE_CESU8,    MakeStatusbar(), L"A", L"41" },
+		UnicodeToHexTestParam{ CODE_LATIN1,   MakeStatusbar(), L"A", L"41" },
+		UnicodeToHexTestParam{ CODE_UTF7,     MakeStatusbar(), L"A", L"U+0041" },
+		UnicodeToHexTestParam{ CODE_UNICODE,  MakeStatusbar(), L"A", L"U+0041" },
+		UnicodeToHexTestParam{ CODE_UNICODEBE,MakeStatusbar(), L"A", L"U+0041" },
+		UnicodeToHexTestParam{ CODE_UTF32LE,  MakeStatusbar(), L"A", L"U+0041" },
+		UnicodeToHexTestParam{ CODE_UTF32BE,  MakeStatusbar(), L"A", L"U+0041" },
+
+		// ―― [2] ASCII 'A' コードポイント表示模 ――
+		// 👈バグ: CLatin1::UnicodeToHex が m_bDispUniInSjis を転用する実装
+		UnicodeToHexTestParam{ CODE_SJIS,   MakeStatusbar(true),                    L"A", L"U+0041" },
+		UnicodeToHexTestParam{ CODE_JIS,    MakeStatusbar(false,true),              L"A", L"U+0041" },
+		UnicodeToHexTestParam{ CODE_EUC,    MakeStatusbar(false,false,true),        L"A", L"U+0041" },
+		UnicodeToHexTestParam{ CODE_UTF8,   MakeStatusbar(false,false,false,true),  L"A", L"U+0041" },
+		UnicodeToHexTestParam{ CODE_CESU8,  MakeStatusbar(false,false,false,true),  L"A", L"U+0041" },
+		UnicodeToHexTestParam{ CODE_LATIN1, MakeStatusbar(true),                    L"A", L"U+0041" },
+
+		// ―― [3] 'あ' (U+3042) 各コード固有Hex ――
+		UnicodeToHexTestParam{ CODE_SJIS,   MakeStatusbar(), L"あ", L"82A0" },
+		UnicodeToHexTestParam{ CODE_JIS,    MakeStatusbar(), L"あ", L"2422" },
+		UnicodeToHexTestParam{ CODE_EUC,    MakeStatusbar(), L"あ", L"A4A2" },
+		UnicodeToHexTestParam{ CODE_UTF8,   MakeStatusbar(), L"あ", L"E38182" },
+		UnicodeToHexTestParam{ CODE_CESU8,  MakeStatusbar(), L"あ", L"E38182" },
+		// 👈バグ: Latin-1 変換不可 → UTF-16BEフォールバック → U+XXXX
+		UnicodeToHexTestParam{ CODE_LATIN1, MakeStatusbar(), L"あ", L"U+3042" },
+
+		// ―― [4] 'あ' コードポイント表示模 ――
+		UnicodeToHexTestParam{ CODE_SJIS,  MakeStatusbar(true),                   L"あ", L"U+3042" },
+		UnicodeToHexTestParam{ CODE_JIS,   MakeStatusbar(false,true),             L"あ", L"U+3042" },
+		UnicodeToHexTestParam{ CODE_EUC,   MakeStatusbar(false,false,true),       L"あ", L"U+3042" },
+		UnicodeToHexTestParam{ CODE_UTF8,  MakeStatusbar(false,false,false,true), L"あ", L"U+3042" },
+
+		// ―― [5] サロゲートペア U+20000 (D840 DC00) ――
+		// 👈バグ: SJIS/JIS/EUC は変換不可のため UTF-16BEフォールバック必要
+		UnicodeToHexTestParam{ CODE_SJIS,    MakeStatusbar(),
+			std::wstring{ L"\xD840\xDC00", 2 }, L"D840DC00" },
+		UnicodeToHexTestParam{ CODE_SJIS,    MakeStatusbar(false,false,false,false,true),
+			std::wstring{ L"\xD840\xDC00", 2 }, L"U+20000" },
+		UnicodeToHexTestParam{ CODE_UTF8,    MakeStatusbar(),
+			std::wstring{ L"\xD840\xDC00", 2 }, L"F0A08080" },
+		UnicodeToHexTestParam{ CODE_UTF8,    MakeStatusbar(false,false,false,true,true),
+			std::wstring{ L"\xD840\xDC00", 2 }, L"U+20000" },
+		UnicodeToHexTestParam{ CODE_UNICODE, MakeStatusbar(),
+			std::wstring{ L"\xD840\xDC00", 2 }, L"D840DC00" },
+		UnicodeToHexTestParam{ CODE_UNICODE, MakeStatusbar(false,false,false,false,true),
+			std::wstring{ L"\xD840\xDC00", 2 }, L"U+20000" },
+
+		// ―― [6] IVS: '森' (U+68EE) + 異体字セレクタ U+E0100 (DB40 DD00) ――
+		UnicodeToHexTestParam{ CODE_UNICODE, MakeStatusbar(),
+			std::wstring{ L"\u68EE\uDB40\uDD00", 3 }, L"68EE, DB40DD00" },
+		UnicodeToHexTestParam{ CODE_UNICODE, MakeStatusbar(false,false,false,false,true),
+			std::wstring{ L"\u68EE\uDB40\uDD00", 3 }, L"68EE, U+E0100" },
+		UnicodeToHexTestParam{ CODE_UTF8,    MakeStatusbar(),
+			std::wstring{ L"\u68EE\uDB40\uDD00", 3 }, L"E6A3AEF3A08480" }
+	)
+);
+
+} // namespace window

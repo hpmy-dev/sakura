@@ -60,10 +60,9 @@ TEST(CStream, Open_ValidPath)
 	const wchar_t* tempPath = L"test_cstream_temp.txt";
 	{
 		FILE* fp = _wfopen(tempPath, L"wb");
-		if (fp) {
-			fwrite("test", 1, 4, fp);
-			fclose(fp);
-		}
+		ASSERT_NE(nullptr, fp) << "Failed to create temp file for test";
+		fwrite("test", 1, 4, fp);
+		fclose(fp);
 	}
 	
 	// ファイルを開く
