@@ -89,7 +89,7 @@ CTextOutputStream::CTextOutputStream(const WCHAR* pszPath, ECodeType eCodeType, 
 {
 	m_pcCodeBase = CCodeFactory::CreateCodeBase(eCodeType,0);
 	
-	// nullptr チェックを追加
+	// nullptr チェックを追加: 無効なコードタイプが渡された場合は開かない
 	if( m_pcCodeBase == nullptr ){
 		throw CError_FileOpen();
 	}
@@ -97,9 +97,7 @@ CTextOutputStream::CTextOutputStream(const WCHAR* pszPath, ECodeType eCodeType, 
 	if(Good() && bBom){
 		//BOM付加
 		CMemory cmemBom;
-		if( m_pcCodeBase != nullptr ){
-			m_pcCodeBase->GetBom(&cmemBom);
-		}
+		m_pcCodeBase->GetBom(&cmemBom);
 		if(cmemBom.GetRawLength()>0){
 			fwrite(cmemBom.GetRawPtr(),cmemBom.GetRawLength(),1,GetFp());
 		}
@@ -116,11 +114,6 @@ void CTextOutputStream::WriteString(
 	int				nLen	//!< 書き込む文字列長。-1を渡すと自動計算。
 )
 {
-	// nullptr チェック
-	if( m_pcCodeBase == nullptr ){
-		throw CError_FileWrite();
-	}
-	
 	//$メモ: 文字変換時にいちいちコピーを作ってるので効率が悪い。後々効率改善予定。
 
 	int nDataLen = nLen;

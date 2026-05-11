@@ -81,8 +81,9 @@ TEST(CIoBridge, FileToImpl_ValidCodeBase)
 	// RESULT_COMPLETE が返ることを確認
 	ASSERT_EQ(RESULT_COMPLETE, result);
 	
-	// 変換結果が空でないことを確認
-	ASSERT_GT(cDst.GetStringLength(), 0);
+	// 変換結果が正しい Unicode 文字列であることを確認 (= "テスト")
+	const std::wstring expected = L"\u30C6\u30B9\u30C8";
+	ASSERT_EQ(expected, std::wstring(cDst.GetStringPtr(), cDst.GetStringLength()));
 }
 
 /*!
@@ -108,6 +109,7 @@ TEST(CIoBridge, ImplToFile_ValidCodeBase)
 	// RESULT_COMPLETE が返ることを確認
 	ASSERT_EQ(RESULT_COMPLETE, result);
 	
-	// 変換結果が空でないことを確認
-	ASSERT_GT(cDst.GetRawLength(), 0);
+	// 変換結果が UTF-8 バイト列であることを確認 (= UTF-8 of "テスト")
+	const std::string expectedUtf8 = "\xE3\x83\x86\xE3\x82\xB9\xE3\x83\x88";
+	ASSERT_EQ(expectedUtf8, std::string(reinterpret_cast<const char*>(cDst.GetRawPtr()), cDst.GetRawLength()));
 }

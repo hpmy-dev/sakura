@@ -45,7 +45,7 @@ bool CConvert_CodeAutoToSjis::DoConvert(CNativeW* pcData)
 	{
 	case CODE_JIS:
 		// JIS変換はbase64デコードを行うモードを使う
-		pcCodeBase = std::unique_ptr<CCodeBase>(CCodeFactory::CreateCodeBase(CODE_JIS, true));
+		pcCodeBase.reset(CCodeFactory::CreateCodeBase(CODE_JIS, true));
 		break;
 
 	case CODE_EUC:
@@ -54,7 +54,7 @@ bool CConvert_CodeAutoToSjis::DoConvert(CNativeW* pcData)
 	case CODE_UTF8:
 	case CODE_UTF7:
 		// サポートされているその他の変換
-		pcCodeBase = CCodeFactory::CreateCodeBase(eCodeType);
+		pcCodeBase.reset(CCodeFactory::CreateCodeBase(eCodeType));
 		break;
 
 	default:
