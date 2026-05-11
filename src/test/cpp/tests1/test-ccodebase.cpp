@@ -332,8 +332,8 @@ TEST(CCodeBase, codeLatin1)
 	EXPECT_THAT(cresult1, IsTrue());
 
 	constexpr const auto& wcsLatin1ExtChars =
-		L"\x20AC\x81\x201A\x0192\x201E\x2026\x2020\x2021\x02C6\x2030\x0160\x2039\x0152\x8D\x017D\x8F"
-		L"\x90\x2018\x2019\x201C\x201D\x2022\x2013\x2014\x02DC\x2122\x0161\x203A\x0153\x9D\x017E\x0178"
+		L"€\x81‚ƒ„…†‡ˆ‰Š‹Œ\x8DŽ\x8F"
+		L"\x90''""•–—˜™š›œ\x9DžŸ"
 		L"\xA0¡¢£¤¥¦§¨©ª«¬\xAD®¯"
 		L"°±²³´µ¶·¸¹º»¼½¾¿"
 		L"ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏ"
