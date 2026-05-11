@@ -39,11 +39,13 @@ bool CConvert_CodeToSjis::DoConvert(CNativeW* pcData)
 	std::unique_ptr<CCodeBase> pcCodeBase;
 	if (m_eCodeType == CODE_JIS) {
 		// JIS変換はbase64デコードを行うモードを使う
-		pcCodeBase.reset(CCodeFactory::CreateCodeBase(CODE_JIS, true));
+		auto pJisCodeBase = std::unique_ptr<CCodeBase>(CCodeFactory::CreateCodeBase(CODE_JIS, true));
+		pcCodeBase = std::move(pJisCodeBase);
 	}
 	else {
 		// その他の変換
-		pcCodeBase.reset(CCodeFactory::CreateCodeBase(m_eCodeType));
+		auto pOtherCodeBase = CCodeFactory::CreateCodeBase(m_eCodeType);
+		pcCodeBase = std::move(pOtherCodeBase);
 	}
 
 	// nullptr チェックを追加
