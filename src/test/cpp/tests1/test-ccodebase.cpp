@@ -155,7 +155,7 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(CCodeBase, codeSJis)
 {
 	const auto eCodeType = CODE_SJIS;
-	auto pCodeBase = CCodeFactory::CreateCodeBase( eCodeType );
+	std::unique_ptr<CCodeBase> pCodeBase = CCodeFactory::CreateCodeBase(eCodeType);
 
 	// 7bit ASCII範囲（等価変換）
 	constexpr const auto& mbsAscii = "\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F";
@@ -282,7 +282,7 @@ TEST(CCodeBase, codeJis)
 TEST(CCodeBase, codeEucJp)
 {
 	const auto eCodeType = CODE_EUC;
-	auto pCodeBase = CCodeFactory::CreateCodeBase( eCodeType );
+	std::unique_ptr<CCodeBase> pCodeBase = CCodeFactory::CreateCodeBase(eCodeType);
 
 	constexpr const auto& mbsAscii = "\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F";
 	constexpr const auto& wcsAscii = L"\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F";
@@ -371,7 +371,7 @@ TEST(CCodeBase, codeLatin1)
 TEST(CCodeBase, codeUtf8)
 {
 	const auto eCodeType = CODE_UTF8;
-	auto pCodeBase = CCodeFactory::CreateCodeBase( eCodeType );
+	std::unique_ptr<CCodeBase> pCodeBase = CCodeFactory::CreateCodeBase(eCodeType);
 
 	constexpr const auto& mbsAscii = "\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F";
 	constexpr const auto& wcsAscii = L"\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F";
@@ -399,7 +399,7 @@ TEST(CCodeBase, codeUtf8)
 TEST(CCodeBase, codeUtf8_OracleImplementation)
 {
 	const auto eCodeType = CODE_CESU8;
-	auto pCodeBase = CCodeFactory::CreateCodeBase( eCodeType );
+	std::unique_ptr<CCodeBase> pCodeBase = CCodeFactory::CreateCodeBase(eCodeType);
 
 	constexpr const auto& mbsAscii = "\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F";
 	constexpr const auto& wcsAscii = L"\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F";
@@ -581,7 +581,7 @@ TEST_P(GetBomTest, test) {
 	const auto  eCodeType   = std::get<0>(GetParam());
 	const auto& optExpected = std::get<1>(GetParam());
 
-	const auto pCodeBase = CCodeFactory::CreateCodeBase(eCodeType);
+	const std::unique_ptr<CCodeBase> pCodeBase = CCodeFactory::CreateCodeBase(eCodeType);
 
 	CMemory m;
 	pCodeBase->GetBom(&m);
@@ -620,7 +620,7 @@ TEST_P(GetEolTest, test)
 	const auto  eEolType    = std::get<1>(GetParam());
 	const auto& optExpected = std::get<2>(GetParam());
 
-	const auto pCodeBase = CCodeFactory::CreateCodeBase(eCodeType);
+	const std::unique_ptr<CCodeBase> pCodeBase = CCodeFactory::CreateCodeBase(eCodeType);
 
 	CMemory m;
 	pCodeBase->GetEol(&m, eEolType);
