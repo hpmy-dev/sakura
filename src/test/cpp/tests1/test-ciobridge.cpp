@@ -64,7 +64,7 @@ TEST(CIoBridge, ImplToFile_NullCodeBase)
 TEST(CIoBridge, FileToImpl_ValidCodeBase)
 {
 	// UTF-8 エンコードされたテストデータ
-	const char* utf8Data = u8"テスト";
+	const char* utf8Data = "\xE3\x83\x86\xE3\x82\xB9\xE3\x83\x88";
 	CMemory cSrc;
 	cSrc.SetRawData(utf8Data, strlen(utf8Data));
 	

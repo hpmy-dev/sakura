@@ -821,13 +821,13 @@ INSTANTIATE_TEST_SUITE_P(
 		UnicodeToHexTestParam{ CODE_UNICODE, MakeStatusbar(false,false,false,false,true),
 			std::wstring{ L"\xD840\xDC00", 2 }, L"U+20000" },
 
-		// ―― [6] IVS: '森' (U+68EE) + 異体字セレクタ U+E0100 (DB40 DD00) ――
-		UnicodeToHexTestParam{ CODE_UNICODE, MakeStatusbar(),
-			std::wstring{ L"\u68EE\uDB40\uDD00", 3 }, L"68EE, DB40DD00" },
-		UnicodeToHexTestParam{ CODE_UNICODE, MakeStatusbar(false,false,false,false,true),
-			std::wstring{ L"\u68EE\uDB40\uDD00", 3 }, L"68EE, U+E0100" },
-		UnicodeToHexTestParam{ CODE_UTF8,    MakeStatusbar(),
-			std::wstring{ L"\u68EE\uDB40\uDD00", 3 }, L"E6A3AEF3A08480" }
+	// ―― [6] IVS: '森' (U+68EE) + 異体字セレクタ U+E0100 ――
+	UnicodeToHexTestParam{ CODE_UNICODE, MakeStatusbar(),
+		std::wstring{ L"\u68EE\xDB40\xDD00", 3 }, L"68EE, DB40DD00" },
+	UnicodeToHexTestParam{ CODE_UNICODE, MakeStatusbar(false,false,false,false,true),
+		std::wstring{ L"\u68EE\xDB40\xDD00", 3 }, L"68EE, U+E0100" },
+	UnicodeToHexTestParam{ CODE_UTF8,    MakeStatusbar(),
+		std::wstring{ L"\u68EE\xDB40\xDD00", 3 }, L"E6A3AEF3A08480" }
 	)
 );
 

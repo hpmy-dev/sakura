@@ -44,7 +44,9 @@ bool CConvert_CodeToSjis::DoConvert(CNativeW* pcData)
 	}
 	else {
 		// その他の変換
-		auto pOtherCodeBase = CCodeFactory::CreateCodeBase(m_eCodeType);
+		auto pOtherCodeBase = std::unique_ptr<CCodeBase>(
+			CCodeFactory::CreateCodeBase(m_eCodeType)
+		);
 		pcCodeBase = std::move(pOtherCodeBase);
 	}
 
