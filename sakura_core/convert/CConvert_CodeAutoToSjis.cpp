@@ -58,9 +58,7 @@ bool CConvert_CodeAutoToSjis::DoConvert(CNativeW* pcData)
 	case CODE_UTF7:
 		// サポートされているその他の変換
 		{
-			auto pOtherCodeBase = std::unique_ptr<CCodeBase>(
-				CCodeFactory::CreateCodeBase(eCodeType)
-			);
+			auto pOtherCodeBase = CCodeFactory::CreateCodeBase(eCodeType);
 			pcCodeBase = std::move(pOtherCodeBase);
 		}
 		break;
