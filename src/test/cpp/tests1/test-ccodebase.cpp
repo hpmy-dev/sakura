@@ -1057,3 +1057,204 @@ INSTANTIATE_TEST_SUITE_P(UnicodeToHexCases
 );
 
 } // namespace  window
+
+// =========================================================================
+// 以下のブロックは参照ファイルから抽出・追記された追加テストケースです
+// 参照コミット: 275a8767ea9577bc60391ab13f5ec1dca17daa05
+//
+// 既存の UnicodeToHexTest（ESettingType による全フラグ一括 ON/OFF）では
+// 検証できない「個別フラグ制御」「CODE_UNICODE / CODE_UNICODEBE」
+// 「サロゲートペア U+20000」「IVS '森'+E0100」を網羅する。
+// =========================================================================
+
+namespace window {
+
+/*!
+ * @brief ステータスバー設定を生成するヘルパー関数
+ *
+ * 引数で各フラグを個別に ON/OFF できる。
+ * 既存テストの ESettingType 方式は「全フラグ一括 ON」か「全フラグ一括 OFF」
+ * の二択しかなく、"特定フラグだけ ON にしたとき挙動がどう変わるか" を
+ * 個別に保証できない。このヘルパーはその欠点を補う。
+ *
+ * Windows の BOOL は int 型だが、true/false から明示的にキャストすることで
+ * 値の意図を読み手に伝える。
+ */
+static CommonSetting_Statusbar MakeStatusbar(
+	bool dispUniInSjis = false, bool dispUniInJis  = false,
+	bool dispUniInEuc  = false, bool dispUtf8Cp   = false,
+	bool dispSPCp      = false
+)
+{
+	CommonSetting_Statusbar s{};
+	s.m_bDispUniInSjis     = dispUniInSjis ? TRUE : FALSE;
+	s.m_bDispUniInJis      = dispUniInJis  ? TRUE : FALSE;
+	s.m_bDispUniInEuc      = dispUniInEuc  ? TRUE : FALSE;
+	s.m_bDispUtf8Codepoint = dispUtf8Cp   ? TRUE : FALSE;
+	s.m_bDispSPCodepoint   = dispSPCp     ? TRUE : FALSE;
+	return s;
+}
+
+/*!
+ * @brief UnicodeToHex 追加テスト用パラメーター型
+ *
+ * CommonSetting_Statusbar を直接埋め込むことで、テストデータ側で
+ * 各フラグの ON/OFF を自由に組み合わせられる。
+ * 既存の UnicoceToHexTestParam（全 ON / 全 OFF の二択）との違いに注意。
+ * ※既存型名の "Unicoce" はタイポだが、別名として共存させる。
+ */
+using UnicodeToHexTestParamEx = std::tuple<ECodeType, CommonSetting_Statusbar, std::wstring, std::wstring>;
+
+/*!
+ * @brief UnicodeToHex 追加テストフィクスチャ
+ *
+ * 既存の UnicodeToHexTest（ESettingType ベース）と同じ対象関数
+ * CMainStatusBar::UnicodeToHex を、より細粒度なパラメーター制御で再検証する。
+ * Google Test の名前衝突を避けるため UnicodeToHexTestEx とした。
+ */
+struct UnicodeToHexTestEx : public ::testing::TestWithParam<UnicodeToHexTestParamEx> {};
+
+/*!
+ * @brief UnicodeToHex 追加テスト本体
+ */
+TEST_P(UnicodeToHexTestEx, DoConvert)
+{
+	const auto  eCodeType  = std::get<0>(GetParam());
+	const auto& sStatusbar = std::get<1>(GetParam());
+	const auto& wide       = std::get<2>(GetParam());
+	const auto& expected   = std::get<3>(GetParam());
+	EXPECT_EQ(expected, CMainStatusBar::UnicodeToHex(eCodeType, wide, sStatusbar));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+	UnicodeToHexCasesEx, UnicodeToHexTestEx,
+	::testing::Values(
+
+		// ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+		// [1] ASCII 'A' — 11 種の文字コードタイプでデフォルト設定を検証
+		//
+		// 全フラグ OFF 時、SJIS/JIS/EUC/UTF-8/CESU-8/Latin-1 はコードページ上の
+		// 16 進値をそのまま返し、Unicode 系コードタイプ（UTF-7 / UTF-16 / UTF-32）
+		// は常に "U+XXXX" 形式で返すことを確認する。
+		// CODE_UNICODE（= UTF-16LE の別名）と CODE_UNICODEBE（= UTF-16BE の別名）は
+		// 既存テストで CODE_UTF16LE/BE として検証済みだが、
+		// エイリアスとして独立した実装パスを持つ可能性があるため別途検証する。
+		// ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+		UnicodeToHexTestParamEx{ CODE_SJIS,      MakeStatusbar(), L"A", L"41"      },
+		UnicodeToHexTestParamEx{ CODE_JIS,       MakeStatusbar(), L"A", L"41"      },
+		UnicodeToHexTestParamEx{ CODE_EUC,       MakeStatusbar(), L"A", L"41"      },
+		UnicodeToHexTestParamEx{ CODE_UTF8,      MakeStatusbar(), L"A", L"41"      },
+		UnicodeToHexTestParamEx{ CODE_CESU8,     MakeStatusbar(), L"A", L"41"      },
+		UnicodeToHexTestParamEx{ CODE_LATIN1,    MakeStatusbar(), L"A", L"41"      },
+		UnicodeToHexTestParamEx{ CODE_UTF7,      MakeStatusbar(), L"A", L"U+0041"  },
+		UnicodeToHexTestParamEx{ CODE_UNICODE,   MakeStatusbar(), L"A", L"U+0041"  },	// UTF-16LE 別名
+		UnicodeToHexTestParamEx{ CODE_UNICODEBE, MakeStatusbar(), L"A", L"U+0041"  },	// UTF-16BE 別名
+		UnicodeToHexTestParamEx{ CODE_UTF32LE,   MakeStatusbar(), L"A", L"U+0041"  },
+		UnicodeToHexTestParamEx{ CODE_UTF32BE,   MakeStatusbar(), L"A", L"U+0041"  },
+
+		// ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+		// [2] ASCII 'A' — 各コードタイプに対応したフラグを個別 ON にした場合
+		//
+		// 既存テストの ESettingType::DispCodepoint は全フラグを一括 ON するため、
+		// 「どのフラグが実際に効いているか」を切り分けられない。
+		// ここでは対応フラグ 1 つだけを ON にして各実装パスを個別に検証する。
+		// Latin-1 には専用フラグが存在せず、実装が m_bDispUniInSjis を流用している
+		// 設計上の問題がある（バグとして認識済み）。
+		// ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+		UnicodeToHexTestParamEx{ CODE_SJIS,   MakeStatusbar(true),                   L"A", L"U+0041" },	// m_bDispUniInSjis のみ ON
+		UnicodeToHexTestParamEx{ CODE_JIS,    MakeStatusbar(false,true),             L"A", L"U+0041" },	// m_bDispUniInJis のみ ON
+		UnicodeToHexTestParamEx{ CODE_EUC,    MakeStatusbar(false,false,true),       L"A", L"U+0041" },	// m_bDispUniInEuc のみ ON
+		UnicodeToHexTestParamEx{ CODE_UTF8,   MakeStatusbar(false,false,false,true), L"A", L"U+0041" },	// m_bDispUtf8Codepoint のみ ON
+		UnicodeToHexTestParamEx{ CODE_CESU8,  MakeStatusbar(false,false,false,true), L"A", L"U+0041" },	// m_bDispUtf8Codepoint のみ ON（CESU-8 も同フラグ参照）
+		UnicodeToHexTestParamEx{ CODE_LATIN1, MakeStatusbar(true),                   L"A", L"U+0041" },	// 👈バグ: CLatin1 が m_bDispUniInSjis を流用
+
+		// ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+		// [3] ひらがな「あ」(U+3042) — 各コードタイプの固有 Hex を検証
+		//
+		// SJIS = 82A0（Shift-JIS 2 バイト）、JIS = 2422（JIS X 0208 区点 04-02）、
+		// EUC = A4A2（EUC-JP 2 バイト）、UTF-8 = E38182（3 バイト）の各表現を確認。
+		// Latin-1 は U+3042 を表現できないため UTF-16BE のバイト値そのまま
+		// "U+3042" を返すことに注意（変換失敗時の Windows CP フォールバック挙動）。
+		// ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+		UnicodeToHexTestParamEx{ CODE_SJIS,   MakeStatusbar(), L"あ", L"82A0"   },
+		UnicodeToHexTestParamEx{ CODE_JIS,    MakeStatusbar(), L"あ", L"2422"   },
+		UnicodeToHexTestParamEx{ CODE_EUC,    MakeStatusbar(), L"あ", L"A4A2"   },
+		UnicodeToHexTestParamEx{ CODE_UTF8,   MakeStatusbar(), L"あ", L"E38182" },
+		UnicodeToHexTestParamEx{ CODE_CESU8,  MakeStatusbar(), L"あ", L"E38182" },
+		UnicodeToHexTestParamEx{ CODE_LATIN1, MakeStatusbar(), L"あ", L"U+3042" },	// 変換不可 → UTF-16BE フォールバック
+
+		// ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+		// [4] ひらがな「あ」— 対応フラグ個別 ON でコードポイント表示に切り替わることを検証
+		//
+		// 各コードタイプの専用フラグを 1 つだけ ON にすると、
+		// コードページ固有の Hex ではなく "U+3042" が返ることを確認する。
+		// これにより各フラグが正しく独立して機能していることを保証する。
+		// ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+		UnicodeToHexTestParamEx{ CODE_SJIS,  MakeStatusbar(true),                   L"あ", L"U+3042" },
+		UnicodeToHexTestParamEx{ CODE_JIS,   MakeStatusbar(false,true),             L"あ", L"U+3042" },
+		UnicodeToHexTestParamEx{ CODE_EUC,   MakeStatusbar(false,false,true),       L"あ", L"U+3042" },
+		UnicodeToHexTestParamEx{ CODE_UTF8,  MakeStatusbar(false,false,false,true), L"あ", L"U+3042" },
+
+		// ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+		// [5] サロゲートペア U+20000（CJK 統合漢字拡張 B の先頭文字、D840 DC00）
+		//
+		// BMP（U+0000〜U+FFFF）外の文字は UTF-16 ではサロゲートペアで表現される。
+		// SJIS/UTF-8 のデフォルト（全フラグ OFF）では変換結果のバイト列がそのまま
+		// 返るため「D840DC00」「F0A08080」となる（本来はコードポイント表示すべき）。
+		// m_bDispSPCodepoint を ON にすると "U+20000" と正しく表示されることを確認。
+		// CODE_UNICODE（UTF-16LE 別名）でも同様に m_bDispSPCodepoint が効くことを確認。
+		//
+		// 既存テストは U+1F6B9（絵文字）で検証しているが、
+		// U+20000 は CJK 漢字領域であり Windows のコードページ処理が
+		// 異なる可能性があるため独立したテストケースとして追加する。
+		// ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+		UnicodeToHexTestParamEx{ CODE_SJIS,
+			MakeStatusbar(),
+			std::wstring{ L"\xD840\xDC00", 2 }, L"D840DC00" },		// 全フラグ OFF → SJIS 変換失敗、UTF-16BE フォールバック
+		UnicodeToHexTestParamEx{ CODE_SJIS,
+			MakeStatusbar(false,false,false,false,true),				// m_bDispSPCodepoint のみ ON
+			std::wstring{ L"\xD840\xDC00", 2 }, L"U+20000"  },
+		UnicodeToHexTestParamEx{ CODE_UTF8,
+			MakeStatusbar(),
+			std::wstring{ L"\xD840\xDC00", 2 }, L"F0A08080" },		// UTF-8 変換結果（4 バイト）
+		UnicodeToHexTestParamEx{ CODE_UTF8,
+			MakeStatusbar(false,false,false,true,true),				// m_bDispUtf8Codepoint + m_bDispSPCodepoint ON
+			std::wstring{ L"\xD840\xDC00", 2 }, L"U+20000"  },
+		UnicodeToHexTestParamEx{ CODE_UNICODE,
+			MakeStatusbar(),
+			std::wstring{ L"\xD840\xDC00", 2 }, L"D840DC00" },		// UTF-16LE 別名でも同挙動
+		UnicodeToHexTestParamEx{ CODE_UNICODE,
+			MakeStatusbar(false,false,false,false,true),
+			std::wstring{ L"\xD840\xDC00", 2 }, L"U+20000"  },
+
+		// ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+		// [6] IVS（Ideographic Variation Sequence）:
+		//     '森'(U+68EE) + 異体字セレクタ U+E0100（サロゲートペア DB40 DD00）
+		//
+		// IVS は「基底文字（BMP）」＋「異体字セレクタ（非 BMP）」の
+		// 2 コードポイント（UTF-16 では 3 コードユニット）で構成される。
+		// CODE_UNICODE のデフォルト表示では 3 コードユニット分が
+		// "68EE, DB40DD00" のようにカンマ区切りで連結される。
+		// m_bDispSPCodepoint を ON にすると異体字セレクタが "U+E0100" と
+		// 正しくコードポイント表記されることを確認する。
+		//
+		// UTF-8 では基底文字（E6A3AE: 3 バイト）と
+		// 異体字セレクタ（F3A08480: 4 バイト）が連結された計 7 バイトになる。
+		//
+		// 既存テストは '葛'+E0100 を検証しているが、
+		// '森' は NEC 選定 IBM 拡張文字に含まれない純粋な JIS 第 1 水準漢字であり、
+		// SJIS→Unicode 変換テーブルの別経路を検証できる。
+		// ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+		UnicodeToHexTestParamEx{ CODE_UNICODE,
+			MakeStatusbar(),
+			std::wstring{ L"森\xDB40\xDD00", 3 }, L"68EE, DB40DD00" },
+		UnicodeToHexTestParamEx{ CODE_UNICODE,
+			MakeStatusbar(false,false,false,false,true),
+			std::wstring{ L"森\xDB40\xDD00", 3 }, L"68EE, U+E0100"  },
+		UnicodeToHexTestParamEx{ CODE_UTF8,
+			MakeStatusbar(),
+			std::wstring{ L"森\xDB40\xDD00", 3 }, L"E6A3AEF3A08480" }	// 7 バイト = 3+4
+	)
+);
+
+} // namespace window (追加ブロック終端)
