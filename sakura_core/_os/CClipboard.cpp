@@ -528,7 +528,7 @@ bool CClipboard::SetClipboardByFormat(const CStringRef& cstr, const wchar_t* pFo
 			if( RESULT_FAILURE == pCode->UnicodeToCode(cstr, &cmemBuf) ){
 				return false;
 			}
-			// pCode は自動的に解放される
+			// pCode は、このスコープを抜けると自動的に解放される
 			pBuf = (char*)cmemBuf.GetRawPtr();
 			nTextByteLen = cmemBuf.GetRawLength();
 		}
@@ -663,7 +663,7 @@ bool CClipboard::GetClipboardByFormat(CNativeW& mem, const wchar_t* pFormatName,
 						mem.SetString(L"");
 						retVal = false;
 					}
-					// pCode は自動的に解放される
+					// pCode は、このスコープを抜けると自動的に解放される
 				}
 				}
 			}

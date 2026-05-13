@@ -46,7 +46,7 @@
 			pCodeBaseUtf16->UnicodeToHex(std::data(wide), int(std::size(wide)), std::data(buffer), &sStatusBar);
 		}
 	}
-	// pCodeBase と pCodeBaseUtf16 は自動的に解放される
+	// pCodeBase と pCodeBaseUtf16 は、このスコープを抜けると自動的に解放される
 
 	// 出力先バッファのサイズを調整する
 	buffer.resize(::wcsnlen(buffer.c_str(), std::size(buffer)));
