@@ -1,11 +1,11 @@
-/*
+﻿/*
 	Copyright (C) 2021-2026, Sakura Editor Organization
 
 	SPDX-License-Identifier: Zlib
 */
 
 /**
- * @file test-ccodebase2.cpp
+ * @file test-ccodebase.cpp
  * @brief CCodeBase / CCodeFactory の文字コード変換回帰テスト群
  *
  * 検証対象:
