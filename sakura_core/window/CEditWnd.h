@@ -424,18 +424,7 @@ public:
 	ESelectCountMode	m_nSelectCountMode = SELECT_COUNT_TOGGLE; // 選択文字カウント方法
 };
 
-#include "util/ThreadAssert.h"
-
 CEditWnd* GetEditWndPtr() noexcept;
 CEditWnd& GetEditWnd();
-
-//! 安全なHWND取得ヘルパー関数
-/*! CEditWndが未初期化の場合もnullptrを返すため、
-    エラーハンドラ内でも安全に使用できる */
-[[nodiscard]] inline HWND GetEditWndHwndSafe() noexcept {
-	sakura::detail::AssertUiThread();
-	auto* pWnd = GetEditWndPtr();
-	return pWnd ? pWnd->GetHwnd() : nullptr;
-}
 
 #endif /* SAKURA_CEDITWND_6C771A35_3CC8_4932_BF15_823C40487A9F_H_ */

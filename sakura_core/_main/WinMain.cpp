@@ -34,9 +34,6 @@
 #include "env/DLLSHAREDATA.h"
 #include "apiwrap/DarkMode.h"
 
-// UI スレッド ID のグローバル変数定義
-DWORD g_uiThreadId = 0;
-
 /*!
 	Windows Entry point
 
@@ -56,9 +53,6 @@ int WINAPI wWinMain(
 	[[maybe_unused]] int			nCmdShow		//!< show state of window
 )
 {
-	// UI スレッド ID を記録
-	g_uiThreadId = ::GetCurrentThreadId();
-	
 #ifdef USE_LEAK_CHECK_WITH_CRTDBG
 	// 2009.9.10 syat メモリリークチェックを追加
 	::_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF | _CRTDBG_ALLOC_MEM_DF);

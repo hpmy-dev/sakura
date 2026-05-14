@@ -48,7 +48,7 @@ CCodeBase* CCodeFactory::CreateCodeBase(
 	return nullptr;
 }
 
-/*!  
+/*!
  * バイト列から文字列を読み込む。
  *
  * @param [in] code 読み込み元のバイト列。
