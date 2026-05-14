@@ -254,9 +254,8 @@ INSTANTIATE_TEST_SUITE_P(
 	MIMEHeaderDecodeTest,
 	::testing::Values(
 		// Base64 + JIS: "サクラ" を iso-2022-jp + Base64 エンコードしたもの
-		// 期待値はデコード後の JIS バイト列（$B%5%/%i(B はセクション識別子 + かな）
-		MIMEHeaderDecodeTestParam{ CODE_JIS,  "From: =?iso-2022-jp?B?GyRCJTUlLyVpGyhC?=",       "From: $B%5%/%i(B" },
-
+		// 期待値はデコード後の JIS バイト列（$B%5%/%i(B はセクション識別子 + かな）
+        MIMEHeaderDecodeTestParam{ CODE_JIS,  "From: =?iso-2022-jp?B?GyRCJTUlLyVpGyhC?=",       "From: $B%5%/%i(B" },
 		// Base64 + UTF-8: "サクラ" を UTF-8 + Base64 エンコードしたもの
 		// 期待値は UTF-8 バイト列（E3 82 B5 = サ、E3 82 AF = ク、E3 83 A9 = ラ）
 		MIMEHeaderDecodeTestParam{ CODE_UTF8, "From: =?utf-8?B?44K144Kv44Op?=",                 "From: \xe3\x82\xb5\xe3\x82\xaf\xe3\x83\xa9" },
