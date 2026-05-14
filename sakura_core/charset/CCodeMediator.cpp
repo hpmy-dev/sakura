@@ -1,6 +1,6 @@
 ﻿/*! @file */
 /*
-	Copyright (C) 2018-2022, Sakura Editor Organization
+	Copyright (C) 2018-2026, Sakura Editor Organization
 
 	SPDX-License-Identifier: Zlib
 */
@@ -82,5 +82,7 @@ ECodeType CCodeMediator::CheckKanjiCodeOfFile(const WCHAR* pszFile)
 	in.Close();
 
 	// 日本語コードセット判別
+	// 注意: size==0 の場合、buff.get() は nullptr を返すが、
+	// CheckKanjiCode は size==0 の時に buff を参照しないため安全
 	return CheckKanjiCode(buff.get(), size);
 }

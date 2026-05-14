@@ -519,11 +519,16 @@ bool CClipboard::SetClipboardByFormat(const CStringRef& cstr, const wchar_t* pFo
 			pBuf = (char*)cstr.GetPtr();
 			nTextByteLen = cstr.GetLength() * sizeof(wchar_t);
 		}else{
-			CCodeBase* pCode = CCodeFactory::CreateCodeBase(eMode, GetDllShareData().m_Common.m_sFile.GetAutoMIMEdecode());
+			std::unique_ptr<CCodeBase> pCode(
+				CCodeFactory::CreateCodeBase(eMode, GetDllShareData().m_Common.m_sFile.GetAutoMIMEdecode())
+			);
+			if( !pCode ){
+				return false;
+			}
 			if( RESULT_FAILURE == pCode->UnicodeToCode(cstr, &cmemBuf) ){
 				return false;
 			}
-			delete pCode;
+			// pCode は、このスコープを抜けると自動的に解放される
 			pBuf = (char*)cmemBuf.GetRawPtr();
 			nTextByteLen = cmemBuf.GetRawLength();
 		}
@@ -647,12 +652,19 @@ bool CClipboard::GetClipboardByFormat(CNativeW& mem, const wchar_t* pFormatName,
 				CMemory cmem;
 				cmem.SetRawData(pData, nLength);
 				if( nullptr != cmem.GetRawPtr() ){
-					CCodeBase* pCode = CCodeFactory::CreateCodeBase(eMode, GetDllShareData().m_Common.m_sFile.GetAutoMIMEdecode());
+					std::unique_ptr<CCodeBase> pCode(
+					CCodeFactory::CreateCodeBase(eMode, GetDllShareData().m_Common.m_sFile.GetAutoMIMEdecode())
+				);
+				if( !pCode ){
+					mem.SetString(L"");
+					retVal = false;
+				}else{
 					if( RESULT_FAILURE == pCode->CodeToUnicode(cmem, &mem) ){
 						mem.SetString(L"");
 						retVal = false;
 					}
-					delete pCode;
+					// pCode は、このスコープを抜けると自動的に解放される
+				}
 				}
 			}
 		}
