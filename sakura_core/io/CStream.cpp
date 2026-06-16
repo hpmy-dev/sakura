@@ -7,6 +7,9 @@
 #include "StdAfx.h"
 #include "CStream.h"
 #include "util/std_macro.h"
+#include <fcntl.h>
+#include <io.h>
+#include <sys/stat.h>
 
 //	::fflush(m_hFile);
 //  ネットワーク上のファイルを扱っている場合、
@@ -58,10 +61,10 @@ private:
 //               コンストラクタ・デストラクタ                  //
 // -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- //
 
-CStream::CStream(const WCHAR* pszPath, const WCHAR* pszMode, bool bExceptionMode)
+CStream::CStream(const WCHAR* pszPath, const WCHAR* pszMode, bool bExceptionMode, bool secure)
 {
 	m_bExceptionMode = bExceptionMode;
-	Open(pszPath,pszMode);
+	Open(pszPath, pszMode, secure);
 }
 
 CStream::~CStream()
@@ -73,7 +76,7 @@ CStream::~CStream()
 //                    オープン・クローズ                       //
 // -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- //
 //
-void CStream::Open(const WCHAR* pszPath, const WCHAR* pszMode)
+void CStream::Open(const WCHAR* pszPath, const WCHAR* pszMode, bool secure)
 {
 	Close(); //既に開いていたら、一度閉じる
 
@@ -81,8 +84,20 @@ void CStream::Open(const WCHAR* pszPath, const WCHAR* pszMode)
 	m_pcFileAttribute = new CFileAttribute(pszPath);
 	m_pcFileAttribute->PopAttribute(FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
 
-	//オープン
-	m_fp = _wfopen(pszPath,pszMode);
+	if( secure && 0 == wcscmp(pszMode, L"wb") ){
+		// 一時ファイルのTOCTOU対策：存在しない新規ファイルとして排他でオープンする
+		// （シンボリックリンク等に差し替えられていた場合はオープンに失敗する）
+		const int fd = _wopen(pszPath, _O_CREAT | _O_EXCL | _O_WRONLY | _O_BINARY, _S_IREAD | _S_IWRITE);
+		if( fd != -1 ){
+			m_fp = _wfdopen(fd, L"wb");
+			if( !m_fp ){
+				_close(fd);
+			}
+		}
+	}else{
+		//オープン
+		m_fp = _wfopen(pszPath,pszMode);
+	}
 	if(!m_fp){
 		Close(); //属性復元
 	}

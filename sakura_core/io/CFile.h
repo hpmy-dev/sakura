@@ -62,9 +62,9 @@ public:
 	Me& operator = (const Me&) = delete;
 	CTmpFile(Me&&) noexcept = delete;
 	Me& operator = (Me&&) noexcept = delete;
-	~CTmpFile(){ fclose(m_fp); }
+	~CTmpFile(){ if( m_fp ){ fclose(m_fp); } }
 	FILE* GetFilePointer() const{ return m_fp; }
 private:
-	FILE* m_fp;
+	FILE* m_fp = nullptr;
 };
 #endif /* SAKURA_CFILE_53DA3C63_95C0_49D0_9ED1_1C0131493912_H_ */

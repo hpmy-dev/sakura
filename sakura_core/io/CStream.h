@@ -35,7 +35,7 @@ class CStream{
 
 public:
 	//コンストラクタ・デストラクタ
-	CStream(const WCHAR* pszPath, const WCHAR* pszMode, bool bExceptionMode = false);
+	CStream(const WCHAR* pszPath, const WCHAR* pszMode, bool bExceptionMode = false, bool secure = false);
 	CStream(const Me&) = delete;
 	Me& operator = (const Me&) = delete;
 	CStream(Me&&) noexcept = delete;
@@ -46,7 +46,7 @@ public:
 	operator bool() const{ return Good(); }
 
 	//オープン・クローズ
-	void Open(const WCHAR* pszPath, const WCHAR* pszMode);
+	void Open(const WCHAR* pszPath, const WCHAR* pszMode, bool secure = false);
 	void Close();
 
 	//操作
@@ -74,8 +74,8 @@ private:
 
 class COutputStream : public CStream{
 public:
-	COutputStream(const WCHAR* pszPath, const WCHAR* pszMode, bool bExceptionMode = false)
-	: CStream(pszPath, pszMode, bExceptionMode)
+	COutputStream(const WCHAR* pszPath, const WCHAR* pszMode, bool bExceptionMode = false, bool secure = false)
+	: CStream(pszPath, pszMode, bExceptionMode, secure)
 	{
 	}
 

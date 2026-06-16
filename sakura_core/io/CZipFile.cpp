@@ -26,6 +26,10 @@ bool CZipFile::SetZip(const std::filesystem::path& zipPath)
 {
 	m_pZipFolder = nullptr;
 
+	if (!m_pShellDispatch) {
+		return false;
+	}
+
 	// ZIP Folder設定
 	_variant_t var(zipPath.c_str());
 	if (const auto hr = m_pShellDispatch->NameSpace(var, &m_pZipFolder); hr != S_OK) {
@@ -103,7 +107,7 @@ bool CZipFile::ChkPluginDef(std::wstring_view sDefFile, std::wstring& sFolderNam
 // ZIP File 解凍
 bool CZipFile::Unzip(const std::filesystem::path& outDir)
 {
-	if (!m_pZipFolder) {
+	if (!m_pShellDispatch || !m_pZipFolder) {
 		return false;
 	}
 

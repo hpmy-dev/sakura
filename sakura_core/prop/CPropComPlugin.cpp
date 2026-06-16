@@ -235,6 +235,9 @@ INT_PTR CPropPlugin::DispatchEvent( HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 				{
 					HWND hListView = ::GetDlgItem( hwndDlg, IDC_PLUGINLIST );
 					int sel = ListView_GetNextItem( hListView, -1, LVNI_SELECTED );
+					if( sel < 0 ){
+						break;
+					}
 					std::wstring sName = m_Common.m_sPlugin.m_PluginTable[sel].m_szName;	// 個別フォルダー名
 					std::wstring sReadMeName = GetReadMeFile(sName);
 					if (!sReadMeName.empty()) {

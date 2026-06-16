@@ -468,7 +468,7 @@ BOOL CEditView::MakeDiffTmpFile( WCHAR* filename, HWND hWnd, ECodeType code, boo
 		return RESULT_FAILURE != eWriteResult;
 	}
 
-	CTextOutputStream out(filename, code, true, false);
+	CTextOutputStream out(filename, code, true, false, true);
 	if(!out){
 		WarningMessage( nullptr, LS(STR_DIFF_FAILED_TEMP) );
 		return FALSE;
@@ -512,7 +512,7 @@ BOOL CEditView::MakeDiffTmpFile2( WCHAR* tmpName, const WCHAR* orgName, ECodeTyp
 		return FALSE;
 	}
 	CFileLoad	cfl( typeMini->m_encoding );
-	CTextOutputStream out(tmpName, saveCode, true, false);
+	CTextOutputStream out(tmpName, saveCode, true, false, true);
 	if(!out){
 		WarningMessage( nullptr, LS(STR_DIFF_FAILED_TEMP) );
 		return FALSE;

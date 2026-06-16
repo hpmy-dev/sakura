@@ -1185,7 +1185,7 @@ bool CControlTray::OpenNewEditor(
 			}
 			wcscpy(szResponseFile, pszTempFile);
 			free(pszTempFile);
-			CTextOutputStream output(szResponseFile);
+			CTextOutputStream output(szResponseFile, CODE_UTF8, false, true, true);
 			if( !output ){
 				ErrorMessage(hWndParent, LS(STR_TRAY_RESPONSEFILE));
 				return false;

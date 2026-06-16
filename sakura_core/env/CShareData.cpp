@@ -44,6 +44,7 @@
 #include "util/os.h"
 #include "env/CDataProfile.h"
 #include "apiwrap/StdApi.h"
+#include <sddl.h>
 #include "sakura_rc.h"
 #include "config/system_constants.h"
 
@@ -121,14 +122,26 @@ bool CShareData::InitShareData()
 		const auto pszProfileName = GetProfileName();
 		std::wstring strShareDataName = GSTR_SHAREDATA;
 		strShareDataName += pszProfileName;
+		// 作成ユーザ(所有者)にのみフルアクセスを許可するDACLを設定し、別ユーザからのアクセスを禁止する
+		PSECURITY_DESCRIPTOR pSD = nullptr;
+		SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), nullptr, FALSE };
+		if( ::ConvertStringSecurityDescriptorToSecurityDescriptorW(
+				L"D:P(A;;GA;;;OW)", SDDL_REVISION_1, &pSD, nullptr ) ){
+			sa.lpSecurityDescriptor = pSD;
+		}
+
 		m_hFileMap = ::CreateFileMapping(
 			INVALID_HANDLE_VALUE,	//	Sep. 6, 2003 wmlhq
-			nullptr,
+			sa.lpSecurityDescriptor ? &sa : nullptr,
 			PAGE_READWRITE | SEC_COMMIT,
 			0,
 			sizeof( DLLSHAREDATA ),
 			strShareDataName.c_str()
 		);
+
+		if( pSD ){
+			::LocalFree( pSD );
+		}
 	}
 	if( nullptr == m_hFileMap ){
 		::MessageBox(
@@ -934,7 +947,7 @@ BOOL CShareData::ActiveAlreadyOpenedWindow( const WCHAR* pszPath, HWND* phwndOwn
 			WCHAR szCpNameCur[100];
 			CCodePage::GetNameLong(szCpNameCur, pfi->m_nCharCode);
 			WCHAR szCpNameNew[100];
-			CCodePage::GetNameLong(szCpNameNew, pfi->m_nCharCode);
+			CCodePage::GetNameLong(szCpNameNew, nCharCode);
 			if(szCpNameCur[0] && szCpNameNew[0]){
 				if(nCharCode != pfi->m_nCharCode){
 					TopWarningMessage( *phwndOwner,

@@ -16,6 +16,7 @@
 #include "CSelectLang.h"
 
 #include "_main/CProcess.h"
+#include "util/file.h"
 
 //! メッセージリソース用コンストラクタ
 CSelectLang::SSelLangInfo::SSelLangInfo(const std::filesystem::path& path)
@@ -38,19 +39,24 @@ bool CSelectLang::SSelLangInfo::Load()
 		return true;
 	}
 
-	const auto hModule = ::LoadLibraryExW(m_Path.c_str(), nullptr, LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE);
-	if( !hModule ){
+	// 実行ファイルのディレクトリのDLLをフルパス指定でロードする（DLLハイジャック対策）
+	WCHAR szDllPath[_MAX_PATH];
+	GetExedir(szDllPath, m_Path.c_str());
+
+	// スコープを抜けるとき（throw含む）に自動でFreeLibraryする
+	ResourceDllHolder module = ::LoadLibraryExW(szDllPath, nullptr, LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE);
+	if( !module ){
 		return false;
 	}
 
 	// 言語名を取得
-	m_LangName = cxx::load_string(STR_SELLANG_NAME, hModule);
+	m_LangName = cxx::load_string(STR_SELLANG_NAME, module);
 	if (m_LangName.empty()) {
 		throw std::out_of_range("missing language name!");
 	}
 
 	// 言語IDを取得 "0x" + 4桁
-	std::wstring langIdStr{ cxx::load_string(STR_SELLANG_LANGID, hModule) };
+	std::wstring langIdStr{ cxx::load_string(STR_SELLANG_LANGID, module) };
 	if (langIdStr.empty()) {
 		throw std::out_of_range("missing language id!");
 	}
@@ -59,7 +65,7 @@ bool CSelectLang::SSelLangInfo::Load()
 		throw std::out_of_range(std::format("unexpected language id: {}, expected: {}", langId, m_LangId));
 	}
 
-	m_Module = hModule;
+	m_Module = std::move(module);
 
 	return true;
 }

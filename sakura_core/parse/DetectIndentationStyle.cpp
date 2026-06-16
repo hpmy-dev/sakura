@@ -49,7 +49,7 @@ constexpr std::string_view trim(std::string_view s) noexcept {
 }
 
 inline bool strieq(std::string_view lhs, std::string_view rhs) {
-	return 0 == _strnicmp(lhs.data(), rhs.data(), std::min(lhs.size(), rhs.size()));
+	return lhs.size() == rhs.size() && 0 == _strnicmp(lhs.data(), rhs.data(), lhs.size());
 }
 
 inline void tolower(std::string& s) {
@@ -111,7 +111,7 @@ struct EditorConfigParser {
 					}
 					else if (key == "tab_width") {
 						int tab_width;
-						if (std::errc() != std::from_chars(key.data(), key.data() + key.size(), tab_width).ec) {
+						if (std::errc() != std::from_chars(value.data(), value.data() + value.size(), tab_width).ec) {
 							return false;
 						}
 						section->tab_width = tab_width;

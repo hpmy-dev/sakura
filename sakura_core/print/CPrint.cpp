@@ -475,6 +475,7 @@ BOOL CPrint::PrintOpen(
 			LS(STR_ERR_CPRINT02),
 			pMYDEVMODE->m_szPrinterDeviceName	/* プリンターデバイス名 */
 		);
+		::DeleteDC( hdc );
 		bRet = FALSE;
 		goto end_of_func;
 	}

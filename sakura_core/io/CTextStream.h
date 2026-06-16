@@ -45,7 +45,7 @@ class CTextOutputStream final : public COutputStream{
 
 public:
 	//コンストラクタ・デストラクタ
-	CTextOutputStream(const WCHAR* pszPath, ECodeType eCodeType = CODE_UTF8, bool bExceptionMode = false, bool bBom = true);
+	CTextOutputStream(const WCHAR* pszPath, ECodeType eCodeType = CODE_UTF8, bool bExceptionMode = false, bool bBom = true, bool secure = false);
 	CTextOutputStream(const Me&) = delete;
 	Me& operator = (const Me&) = delete;
 	CTextOutputStream(Me&&) noexcept = delete;

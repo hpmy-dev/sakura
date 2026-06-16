@@ -84,8 +84,8 @@ std::wstring CTextInputStream::ReadLineW()
 //                     CTextOutputStream                       //
 // -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- //
 
-CTextOutputStream::CTextOutputStream(const WCHAR* pszPath, ECodeType eCodeType, bool bExceptionMode, bool bBom)
-: COutputStream(pszPath,L"wb",bExceptionMode)
+CTextOutputStream::CTextOutputStream(const WCHAR* pszPath, ECodeType eCodeType, bool bExceptionMode, bool bBom, bool secure)
+: COutputStream(pszPath,L"wb",bExceptionMode,secure)
 {
 	m_pcCodeBase = CCodeFactory::CreateCodeBase(eCodeType,0);
 	if(Good() && bBom){

@@ -116,7 +116,7 @@ bool CCookieManager::ValidateCookieName(LPCWSTR cookieName) const
 		if( (L'0' <= cookieName[i] && cookieName[i] <= L'9') ||
 			(L'a' <= cookieName[i] && cookieName[i] <= L'z') ||
 			(L'A' <= cookieName[i] && cookieName[i] <= L'Z') ||
-			L'_' <= cookieName[i] ){
+			L'_' == cookieName[i] ){
 		}else{
 			return false;
 		}

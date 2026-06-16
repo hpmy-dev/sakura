@@ -112,6 +112,9 @@ ERegisterPlugResult CJackManager::RegisterPlug( std::wstring pszJack, CPlug* plu
 bool CJackManager::UnRegisterPlug( std::wstring pszJack, CPlug* plug )
 {
 	EJack ppId = GetJackFromName( pszJack );
+	if( ppId == PP_NONE ){
+		return false;
+	}
 
 	switch( ppId ){
 	case PP_OUTLINE:					//アウトライン解析方法を追加

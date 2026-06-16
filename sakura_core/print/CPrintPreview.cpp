@@ -1088,7 +1088,11 @@ void CPrintPreview::OnPrint( void )
 		&hdc,
 		szErrMsg						/* エラーメッセージ格納場所 */
 	) ){
-//		MYTRACE( L"%s\n", szErrMsg );
+		TopWarningMessage( m_pParentWnd->GetHwnd(), L"%s", szErrMsg );
+		::EnableWindow( m_pParentWnd->GetHwnd(), TRUE );
+		cDlgPrinting.CloseDialog( 0 );
+		m_bLockSetting = false;
+		return;
 	}
 
 	// 印刷用半角フォントと、印刷用全角フォントを作成

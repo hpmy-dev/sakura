@@ -245,7 +245,7 @@ int CDlgFileTree::GetData()
 	}
 	bool bSaveShareData = (m_fileTreeSetting.m_szLoadProjectIni[0] == L'\0');
 	std::vector<SFileTreeItem> items;
-	if( !GetDataTree(items, TreeView_GetRoot(GetItemHwnd(IDC_TREE_FL)), 0, (bSaveShareData ? int(std::size(pFileTree->m_aItems)) : 0) ) ){
+	if( !GetDataTree(items, TreeView_GetRoot(GetItemHwnd(IDC_TREE_FL)), 0, ((bSaveShareData && pFileTree) ? int(std::size(pFileTree->m_aItems)) : 0) ) ){
 		InfoMessage(GetHwnd(), LS(STR_FILETREE_MAXCOUNT));
 	}
 	if( pFileTree ){
