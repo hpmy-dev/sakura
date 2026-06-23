@@ -9,6 +9,7 @@
 #include <cstring>
 #include <functional>
 #include <memory>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -217,6 +218,12 @@ TEST(CClipboard, Empty) {
 	clipboard.Empty();
 }
 
+// クリップボードの安全な上限値が定義されていることを確認する。
+TEST(CClipboard, ClipboardMaxCharsConstant) {
+	EXPECT_EQ(CLIPBOARD_MAX_CHARS, static_cast<size_t>(INT32_MAX));
+	EXPECT_GT(CLIPBOARD_MAX_CHARS, 0u);
+}
+
 // SetHtmlTextのテスト。
 // SetClipboardData に渡された引数が期待される結果と一致することを確認する。
 TEST(CClipboard, SetHtmlText1)
@@ -302,6 +309,34 @@ TEST(CClipboard, SetText6) {
 	MockCClipboard clipboard;
 	ON_CALL(clipboard, GlobalAlloc(_, 1)).WillByDefault(Return(nullptr));
 	EXPECT_FALSE(clipboard.SetText(text.data(), text.length(), false, true, 0));
+}
+
+// SetText のテスト。nDataLen > INT32_MAX でサクラ形式を指定した場合。
+// SAKURAClipW のヘッダに収まらないが SetClipboardData は呼ばれず false を返す。
+TEST(CClipboard, SetText7) {
+	const wchar_t text[] = L"x";
+	MockCClipboard clipboard;
+	EXPECT_CALL(clipboard, SetClipboardData(_, _)).Times(0);
+	EXPECT_FALSE(clipboard.SetText(text, static_cast<size_t>(INT32_MAX) + 1, false, false, CClipboard::GetSakuraFormat()));
+}
+
+// SetText のテスト。nDataLen > INT32_MAX でフォーマット未指定（-1）の場合。
+// CLIPBOARD_MAX_CHARS 超過により早期リターンし、全形式でクリップボード設定されず false を返す。
+TEST(CClipboard, SetText8) {
+	const wchar_t text[] = L"x";
+	const size_t hugeLen = static_cast<size_t>(INT32_MAX) + 1;
+	MockCClipboard clipboard;
+	EXPECT_CALL(clipboard, SetClipboardData(_, _)).Times(0);
+	EXPECT_FALSE(clipboard.SetText(text, hugeLen, true, false, -1));
+}
+
+// SetText のテスト。nDataLen + 1 が size_t でオーバーフローする場合。
+// CF_UNICODETEXT の GlobalAlloc サイズ計算段階で検出しスキップ、false を返す。
+TEST(CClipboard, SetTextSizeTOverflow) {
+	const wchar_t text[] = L"x";
+	MockCClipboard clipboard;
+	EXPECT_CALL(clipboard, SetClipboardData(_, _)).Times(0);
+	EXPECT_FALSE(clipboard.SetText(text, std::numeric_limits<size_t>::max(), false, false, -1));
 }
 
 // GetText のテストで使用するダミーデータを準備するためのフィクスチャクラス
