@@ -41,6 +41,7 @@
 #include "prop/CPropCommon.h"
 #include "typeprop/CPropTypes.h"
 
+#include <cwctype>
 #include <fstream>
 
 #include "config/system_constants.h"
@@ -449,8 +450,16 @@ TEST_F(EditWndTest, GetDocDataObject001)
 
 	ASSERT_THAT(medium.hGlobal, NotNull());
 
+	// CFSTR_FILENAMEW形式のパスはWindowsシェルがドライブ文字を大文字へ
+	// 正規化するため、期待値のドライブ文字も大文字へ揃えて比較する。
+	// （CF_UNICODETEXTはsakura独自形式で渡したパスをそのまま保持するため正規化不要）
+	auto expectedPath = targetPath.native();
+	if (expectedPath.size() >= 2 && expectedPath[1] == L':') {
+		expectedPath[0] = static_cast<wchar_t>(std::towupper(expectedPath[0]));
+	}
+
 	cxx::GlobalWString memory{ medium.hGlobal };
-	EXPECT_THAT(memory.wstring(), StrEq(targetPath.native()));
+	EXPECT_THAT(memory.wstring(), StrEq(expectedPath));
 
 	// 独自仕様のチェック
 	format.cfFormat = CF_UNICODETEXT;
