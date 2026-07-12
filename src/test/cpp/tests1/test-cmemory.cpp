@@ -99,9 +99,13 @@ TEST(CMemory, OverHeapMaxReq)
 	ASSERT_STREQ(data, reinterpret_cast<wchar_t*>(cmem.GetRawPtr()));
 	ASSERT_EQ((int(std::size(data)) - 1) * sizeof(wchar_t), cmem.GetRawLength());
 
-	// メモリ確保失敗時は、メモリが解放される
+	// バッファ確保失敗時は、既存バッファが保持される（新仕様）
+	auto* pBefore = cmem.GetRawPtr();
 	cmem.AllocBuffer(static_cast<unsigned>(_HEAP_MAXREQ) + 1);
-	ASSERT_TRUE(cmem.GetRawPtr() == nullptr);
+	ASSERT_TRUE(cmem.GetRawPtr() == pBefore);
+	ASSERT_TRUE(cmem.GetRawPtr() != nullptr);
+	// データが保持されていることを確認
+	ASSERT_STREQ(data, reinterpret_cast<wchar_t*>(cmem.GetRawPtr()));
 }
 
 /*!
@@ -122,9 +126,13 @@ TEST(CMemory, OverMaxSize)
 	ASSERT_STREQ(data, reinterpret_cast<wchar_t*>(cmem.GetRawPtr()));
 	ASSERT_EQ((int(std::size(data)) - 1) * sizeof(wchar_t), cmem.GetRawLength());
 
-	// メモリ確保失敗時は、メモリが解放される
+	// バッファ確保失敗時は、既存バッファが保持される（新仕様）
+	auto* pBefore = cmem.GetRawPtr();
 	cmem.AllocBuffer(static_cast<unsigned>(INT_MAX) + 1);
-	ASSERT_TRUE(cmem.GetRawPtr() == nullptr);
+	ASSERT_TRUE(cmem.GetRawPtr() == pBefore);
+	ASSERT_TRUE(cmem.GetRawPtr() != nullptr);
+	// データが保持されていることを確認
+	ASSERT_STREQ(data, reinterpret_cast<wchar_t*>(cmem.GetRawPtr()));
 }
 
 /*!
@@ -159,4 +167,31 @@ TEST(CMemory, AppendRawData)
 		}
 	}
 	ASSERT_TRUE(sum == sumAnswer);
+}
+
+/*!
+	CMemory::AppendRawData のテスト
+	nullptr + nDataLen > 0 で早期リターンし、クラッシュしないこと（フェーズ 0 安全性）
+ */
+TEST(CMemory, AppendRawData_NullptrSafety)
+{
+	CMemory cmem;
+	
+	// 検証用のデータを入れる
+	constexpr auto& data = L"初期データ";
+	cmem.SetRawData(data, (int(std::size(data)) - 1) * sizeof(wchar_t));
+	auto initialLength = cmem.GetRawLength();
+	
+	// nullptr + nDataLen > 0 を渡す → クラッシュせず、データも追加されない
+	cmem.AppendRawData(nullptr, 10);
+	
+	// データ長が変わっていないことを確認（安全にスキップされた）
+	ASSERT_EQ(initialLength, cmem.GetRawLength());
+	
+	// 元のデータが保持されていることを確認
+	ASSERT_STREQ(data, reinterpret_cast<wchar_t*>(cmem.GetRawPtr()));
+	
+	// nullptr + nDataLen == 0 の場合も安全
+	cmem.AppendRawData(nullptr, 0);
+	ASSERT_EQ(initialLength, cmem.GetRawLength());
 }
