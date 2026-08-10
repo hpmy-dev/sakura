@@ -60,11 +60,19 @@ SLoadFromCodeResult CCodeFactory::LoadFromCode(ECodeType eCodeType, std::string_
 	CMemory cmemSrc{ code.data(), code.size() };
 	CNativeW cDest;
 
+	// nullptr チェックを追加
+	std::unique_ptr<CCodeBase> pCodeBase(CreateCodeBase(eCodeType));
+	if( !pCodeBase ){
+		// エラー結果を返す
+		return SLoadFromCodeResult{ RESULT_FAILURE, code, std::size(code), std::wstring() };
+	}
+
 	// 変換を実行する
-	const auto result = CreateCodeBase(eCodeType)->CodeToUnicode(cmemSrc, &cDest);
+	const auto result = pCodeBase->CodeToUnicode(cmemSrc, &cDest);
+	// pCodeBase は unique_ptr なので自動解放される
 
 	// 読み込まれたデータを回収する
-	std::wstring loaded{ cDest.GetStringPtr(), size_t(cDest.GetStringLength()) };
+	std::wstring loaded{ cDest.GetStringPtr(), static_cast<size_t>(cDest.GetStringLength()) };
 
 	return SLoadFromCodeResult{ result, code, std::size(code), std::move(loaded) };
 }
@@ -81,11 +89,22 @@ SConvertToCodeResult CCodeFactory::ConvertToCode(ECodeType eCodeType, std::wstri
 	CNativeW cSrc{ wide.data(), wide.size() };
 	CMemory cDest;
 
+	// nullptr チェックを追加
+	std::unique_ptr<CCodeBase> pCodeBase(CreateCodeBase(eCodeType));
+	if( !pCodeBase ){
+		// エラー結果を返す
+		return SConvertToCodeResult{ RESULT_FAILURE, wide, std::size(wide), std::string() };
+	}
+
 	// 変換を実行する
-	const auto result = CreateCodeBase(eCodeType)->UnicodeToCode(cSrc, &cDest);
+	const auto result = pCodeBase->UnicodeToCode(cSrc, &cDest);
+	// pCodeBase は unique_ptr なので自動解放される
 
 	// 書き込まれたデータを回収する
-	std::string loaded{ LPCSTR(cDest.GetRawPtr()), size_t(cDest.GetRawLength()) };
+	std::string loaded{
+		reinterpret_cast<const char*>(cDest.GetRawPtr()),
+		static_cast<size_t>(cDest.GetRawLength())
+	};
 
 	return SConvertToCodeResult{ result, wide, std::size(wide), std::move(loaded) };
 }

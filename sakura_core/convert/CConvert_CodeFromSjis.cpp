@@ -27,10 +27,22 @@ bool CConvert_CodeFromSjis::DoConvert(CNativeW* pcData)
 	// バッファ内容をANSI版相当に変換（Unicode→SJIS）後に SJIS→xxx 変換するのと等価な結果を得るために
 	// Unicode→xxx 変換する
 	CMemory m;
-	CCodeFactory::CreateCodeBase(m_eCodeType)->UnicodeToCode(*pcData, &m);
+	std::unique_ptr<CCodeBase> pCodeTo(
+		CCodeFactory::CreateCodeBase(m_eCodeType)
+	);
+	if( !pCodeTo ){
+		return false; // 変換失敗
+	}
+	pCodeTo->UnicodeToCode(*pcData, &m);
 
 	// バッファ内容をUNICODE版相当に戻すために SJIS→Unicode 変換する
-	CCodeFactory::CreateCodeBase(CODE_SJIS)->CodeToUnicode(m, pcData);
+	std::unique_ptr<CCodeBase> pCodeFrom(
+		CCodeFactory::CreateCodeBase(CODE_SJIS)
+	);
+	if( !pCodeFrom ){
+		return false; // 変換失敗
+	}
+	pCodeFrom->CodeToUnicode(m, pcData);
 
 	return true;
 }

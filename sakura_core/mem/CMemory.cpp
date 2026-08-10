@@ -149,6 +149,8 @@ void CMemory::AllocBuffer( size_t nNewDataLen )
 		m_pRawData = static_cast<std::byte*>(pAllocated);
 		m_nDataBufSize = static_cast<decltype(m_nDataBufSize)>(nAllocSize);
 	}else{
+		// realloc失敗時は元のポインタが有効なまま残る（C標準規約）
+		// 元のバッファは維持したまま、エラーメッセージのみ表示
 		// "CMemory::AllocBuffer(nNewDataLen==%d)\nメモリ確保に失敗しました。\n"
 		TopCustomMessage(
 			nullptr,
@@ -156,10 +158,8 @@ void CMemory::AllocBuffer( size_t nNewDataLen )
 			LS(STR_ERR_DLGMEM1),
 			nNewDataLen
 		);
-
-		if( m_pRawData != nullptr && nAllocSize != 0 ){
-			Reset();
-		}
+		// 重要: Reset()は呼ばない！（元のバッファを保持）
+		// m_pRawData と m_nDataBufSize は変更しない
 	}
 }
 
@@ -207,6 +207,11 @@ void CMemory::SetRawDataHoldBuffer( const CMemory& cmemData )
 /* バッファの最後にデータを追加する（publicメンバ）*/
 void CMemory::AppendRawData( const void* pData, size_t nDataLen )
 {
+	// nullptr安全性チェック: nDataLenが0でもpDataがnullptrの場合は未定義動作を回避
+	if( pData == nullptr && nDataLen > 0 ){
+		return; // エラー: nullptrに対して非ゼロサイズのコピーは不可
+	}
+
 	// メモリが足りなければ確保する
 	if( m_nDataBufSize <= m_nRawLen + nDataLen + sizeof(wchar_t) ){
 		AllocBuffer( m_nRawLen + nDataLen );
@@ -214,7 +219,11 @@ void CMemory::AppendRawData( const void* pData, size_t nDataLen )
 
 	// メモリを確保できた場合のみコピーする
 	if( m_pRawData != nullptr && m_nRawLen + nDataLen + sizeof(wchar_t) <= m_nDataBufSize ){
-		::memcpy( &m_pRawData[m_nRawLen], pData, nDataLen );
+		// nDataLen > 0 かつ pData != nullptr の場合のみmemcpyを実行
+		// （nullptr渡しによる未定義動作を回避）
+		if( nDataLen > 0 && pData != nullptr ){
+			::memcpy( &m_pRawData[m_nRawLen], pData, nDataLen );
+		}
 		_SetRawLength( m_nRawLen + nDataLen );
 	}
 }

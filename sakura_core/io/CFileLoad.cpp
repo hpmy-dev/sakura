@@ -212,6 +212,13 @@ ECodeType CFileLoad::FileOpen( LPCWSTR pFileName, bool bBigFile, ECodeType CharC
 	}
 	m_CharCode = CharCode;
 	m_pCodeBase=CCodeFactory::CreateCodeBase(m_CharCode, m_nFlag);
+	
+	// nullptr チェックを追加
+	if( m_pCodeBase == nullptr ){
+		FileClose();
+		throw CError_FileOpen();
+	}
+	
 	m_encodingTrait = CCodePage::GetEncodingTrait(m_CharCode);
 	m_nFlag = nFlag;
 

@@ -18,6 +18,14 @@ EConvertResult CIoBridge::FileToImpl(
 	[[maybe_unused]] int					nFlag		//!< [in]  bit 0: MIME Encodeされたヘッダーをdecodeするかどうか
 )
 {
+	// pCode の nullptr チェック
+	if( pCode == nullptr ){
+		if( pDst != nullptr ){
+			pDst->SetString(L"");
+		}
+		return RESULT_FAILURE;
+	}
+
 	//任意の文字コードからUnicodeへ変換する
 	EConvertResult ret = pCode->CodeToUnicode(cSrc,pDst);
 
@@ -31,6 +39,14 @@ EConvertResult CIoBridge::ImplToFile(
 	CCodeBase*			pCode		//!< [in]  変換先メモリの文字コード
 )
 {
+	// pCode の nullptr チェック
+	if( pCode == nullptr ){
+		if( pDst != nullptr ){
+			pDst->SetRawData("", 0);
+		}
+		return RESULT_FAILURE;
+	}
+
 	// Unicodeから任意の文字コードへ変換する
 	EConvertResult ret = pCode->UnicodeToCode(cSrc,pDst);
 

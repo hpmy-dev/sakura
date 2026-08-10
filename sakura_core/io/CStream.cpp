@@ -61,6 +61,16 @@ private:
 CStream::CStream(const WCHAR* pszPath, const WCHAR* pszMode, bool bExceptionMode)
 {
 	m_bExceptionMode = bExceptionMode;
+
+	// pszPath の nullptr チェックを追加
+	if( pszPath == nullptr ){
+		if( m_bExceptionMode ){
+			throw CError_FileOpen();
+		}
+		// 例外モードでない場合は静かに失敗
+		return;
+	}
+
 	Open(pszPath,pszMode);
 }
 
@@ -75,6 +85,14 @@ CStream::~CStream()
 //
 void CStream::Open(const WCHAR* pszPath, const WCHAR* pszMode)
 {
+	// pszPath の nullptr チェック
+	if( pszPath == nullptr ){
+		if( m_bExceptionMode ){
+			throw CError_FileOpen();
+		}
+		return;
+	}
+
 	Close(); //既に開いていたら、一度閉じる
 
 	//属性変更：隠しorシステムファイルはCの関数で読み書きできないので属性を変更する

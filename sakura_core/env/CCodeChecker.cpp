@@ -49,7 +49,9 @@ static EConvertResult _CheckSavingCharcode(const CDocLineMgr& pcDocLineMgr, ECod
 {
 	const CDocLine*	pcDocLine = pcDocLineMgr.GetDocLineTop();
 	const bool bCodePageMode = IsValidCodeOrCPType(eCodeType) && !IsValidCodeType(eCodeType);
-	CCodeBase* pCodeBase=CCodeFactory::CreateCodeBase(eCodeType,0);
+	std::unique_ptr<CCodeBase> pCodeBase(
+		CCodeFactory::CreateCodeBase(eCodeType,0)
+	);
 	CMemory cmemTmp;	// バッファを再利用
 	CNativeW cmemTmp2;
 	CLogicInt nLine = CLogicInt(0);
@@ -58,14 +60,14 @@ static EConvertResult _CheckSavingCharcode(const CDocLineMgr& pcDocLineMgr, ECod
 		EConvertResult e = CIoBridge::ImplToFile(
 			pcDocLine->_GetDocLineDataWithEOL(),
 			&cmemTmp,
-			pCodeBase
+			pCodeBase.get()
 		);
 		if( bCodePageMode ){
 			// コードページはRESULT_LOSESOMEを返さないので、自分で文字列比較する
 			CIoBridge::FileToImpl(
 				cmemTmp,
 				&cmemTmp2,
-				pCodeBase,
+				pCodeBase.get(),
 				0
 			);
 			const int nDocLineLen = (Int)pcDocLine->GetLengthWithEOL();
@@ -88,7 +90,6 @@ static EConvertResult _CheckSavingCharcode(const CDocLineMgr& pcDocLineMgr, ECod
 				point.x = CLogicInt(nPos);
 				// 変換できなかった位置の1文字取得
 				wc.SetString( p + nPos, (Int)CNativeW::GetSizeOfChar( p, nDocLineLen, nPos ) );
-				delete pCodeBase;
 				return RESULT_LOSESOME;
 			}
 		}
@@ -107,7 +108,7 @@ static EConvertResult _CheckSavingCharcode(const CDocLineMgr& pcDocLineMgr, ECod
 					EConvertResult e2 = CIoBridge::ImplToFile(
 						mem,
 						&cmemTmp,
-						pCodeBase
+						pCodeBase.get()
 					);
 					if( e2 == RESULT_LOSESOME ){
 						point.x = nPos;
@@ -118,7 +119,6 @@ static EConvertResult _CheckSavingCharcode(const CDocLineMgr& pcDocLineMgr, ECod
 					chars = CNativeW::GetSizeOfChar( pLine, nLineLen, nPos );
 				}
 			}
-			delete pCodeBase;
 			return e;
 		}
 
@@ -126,7 +126,6 @@ static EConvertResult _CheckSavingCharcode(const CDocLineMgr& pcDocLineMgr, ECod
 		pcDocLine = pcDocLine->GetNextLine();
 		nLine++;
 	}
-	delete pCodeBase;
 	return RESULT_COMPLETE;
 }
 
