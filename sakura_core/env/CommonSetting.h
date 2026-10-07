@@ -2,7 +2,7 @@
 //2007.09.28 kobake Common整理
 /*
 	Copyright (C) 2008, kobake
-	Copyright (C) 2018-2022, Sakura Editor Organization
+	Copyright (C) 2018-2026, Sakura Editor Organization
 
 	SPDX-License-Identifier: Zlib
 */
@@ -387,6 +387,7 @@ struct CommonSetting_Search
 	bool			m_bGrepOutputFileOnly;		//!< Grep: ファイル毎最初のみ検索
 	bool			m_bGrepOutputBaseFolder;	//!< Grep: ベースフォルダー表示
 	bool			m_bGrepSeparateFolder;		//!< Grep: フォルダー毎に表示
+	bool			m_bGrepExceptFileRegexp;	//!< Grep: 除外ファイルを正規表現で指定
 	bool			m_bGrepBackup;				//!< Grep: バックアップ作成
 
 	BOOL			m_bCaretTextForSearch;		//!< カーソル位置の文字列をデフォルトの検索文字列にする 2006.08.23 ryoji

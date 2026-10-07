@@ -99,6 +99,7 @@ int CDlgGrepReplace::DoModal( HINSTANCE hInstance, HWND hwndParent, const WCHAR*
 	m_nGrepOutputStyle = m_pShareData->m_Common.m_sSearch.m_nGrepOutputStyle;	// Grep: 出力形式
 	m_bPaste = false;
 	m_bBackup = m_pShareData->m_Common.m_sSearch.m_bGrepBackup;
+	m_bGrepExceptFileRegexp = m_pShareData->m_Common.m_sSearch.m_bGrepExceptFileRegexp;	// 除外ファイルを正規表現で指定する
 
 	if( m_szFile[0] == L'\0' && m_pShareData->m_sSearchKeywords.m_aGrepFiles.size() ){
 		wcscpy( m_szFile, m_pShareData->m_sSearchKeywords.m_aGrepFiles[0] );		/* 検索ファイル */
