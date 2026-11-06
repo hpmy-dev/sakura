@@ -9,9 +9,16 @@
 #define SAKURA_CGREPAGENT_97F2B632_71C8_4E4A_AC42_13A6098B248F_H_
 #pragma once
 
+#include <atomic>
+#include <deque>
+#include <future>
+#include <memory>
 #include <optional>
+#include <span>
 #include <string_view>
+#include <thread>
 #include "doc/CDocListener.h"
+#include "mem/CNativeW.h"
 class CEditView;
 class CSearchStringPattern;
 class CGrepEnumKeys;
@@ -62,6 +69,68 @@ struct IGrepOutputTarget {
 	virtual bool IsDrawing() const = 0;
 };
 
+namespace grep {
+
+/*!
+	@brief ワーカーのスレッドで使う、中断の確認と進み具合の表示
+
+	中断は、メインスレッドが立てるフラグで受け取る。確かめるたびにフラグを見る。
+	画面に触るのはメインスレッドだけなので、表示はしない。
+*/
+class CGrepWorkerProgress : public IGrepProgress {
+public:
+	/*!
+		@param[in]	bCancel	中断のフラグ(メインスレッドが立てる。このオブジェクトより長く残す)
+	*/
+	explicit CGrepWorkerProgress( const std::atomic<bool>& bCancel )
+		: m_bCancel( bCancel )
+	{
+	}
+
+	bool IsCheckTime() override
+	{
+		return true;
+	}
+
+	bool IsFileNameTime() override
+	{
+		return false;
+	}
+
+	bool IsCancelRequested() override
+	{
+		return m_bCancel;
+	}
+
+	void ApplyRealTimeView() override
+	{
+		// ワーカーは画面に触らない
+	}
+
+	void SetHitCount( int /*nHitCount*/ ) override
+	{
+		// ワーカーは表示しない(ヒット数はメインスレッドが結果を受け取ったときに表示する)
+	}
+
+	void SetFileName( std::wstring_view /*fileName*/ ) override
+	{
+		// ワーカーは表示しない(ファイル名はメインスレッドが表示する)
+	}
+
+	void SetFolder( std::wstring_view /*folder*/ ) override
+	{
+		// ワーカーは表示しない(フォルダーはメインスレッドが表示する)
+	}
+
+private:
+	const std::atomic<bool>&	m_bCancel;	//!< 中断のフラグ(メインスレッドが立てる)
+};
+
+// 1 つのフォルダーの中のファイルを並列に検索するときの、ワーカーごとの正規表現を作る
+std::vector<std::unique_ptr<CBregexp>> CreateWorkerRegexps( const CSearchStringPattern& pattern, const GrepInfo& gi, bool bHwnd, size_t nMaxThreads );
+
+} // namespace grep
+
 //	Jun. 26, 2001 genta	正規表現ライブラリの差し替え
 //	Mar. 28, 2004 genta DoGrepFileから不要な引数を削除
 class CGrepAgent : public CDocListenerEx{
@@ -104,6 +173,7 @@ private:
 		const SSearchOption&		sSearchOption;	//!< 検索オプション
 		const GrepInfo&				sGrepOption;	//!< Grep実行の入力一式(正規化済み)
 		const CSearchStringPattern&	pattern;		//!< 検索パターン
+		std::span<CBregexp* const>	workerRegexps;	//!< ワーカーごとの正規表現(数が並列に検索するファイルの数の上限。空なら直列)
 	};
 
 	//! フォルダーの列挙の条件(全フォルダーで共通)
@@ -127,6 +197,7 @@ private:
 		CNativeW&		cmemMessage;				//!< まだ出力していない結果
 		CNativeW&		cUnicodeBuffer;				//!< 1 行の読み込みに使うバッファー
 		SGrepHeading	heading;					//!< 見出しを出したか
+		bool			bWorker = false;			//!< ワーカーのスレッドで検索しているか(ファイルの途中で出力先に足さない。pOutput は使わない)
 	};
 
 	//! 検索するファイル 1 つの名前とパス
@@ -136,6 +207,20 @@ private:
 		const WCHAR*	pszBaseFolder;	//!< 検索フォルダー C:\Folder
 		const WCHAR*	pszFolder;		//!< 結果に表示するフォルダー
 		const WCHAR*	pszRelPath;		//!< 結果に表示する相対パス
+	};
+
+	//! ワーカーが検索したファイル 1 つぶんの結果
+	struct SGrepFileResult {
+		CNativeW		cmemMessage;		//!< 結果の文字列。見出しを出していれば先頭にある
+		int				nHitCount = 0;		//!< ヒット数
+		int				nRet = 0;			//!< DoGrepFile() の戻り値(中断したら -1)
+		SGrepHeading	heading;			//!< 見出しを出したか(見出しを出していない状態から検索する)
+	};
+
+	//! ファイル 1 つを検索するワーカー。消すときに、スレッドの終わりを待つ
+	struct SGrepFileWorker {
+		std::future<SGrepFileResult>	result;		//!< 結果を受け取る
+		std::jthread					thread;		//!< 検索するスレッド
 	};
 
 	// 結果を出力先に足す(足す直前の時刻を覚える)
@@ -162,6 +247,40 @@ private:
 		const WCHAR*			pszBasePath
 	);
 
+	// ファイル 1 つを検索した後、たまった結果を出力する時機なら出力する
+	void AppendResultIfDue( SGrepOutput& out, const wchar_t* pszKey, DWORD dwFileSizeLow, int& nWork, int& nHitCountOld );
+
+	// フォルダー 1 つぶんの対象ファイルを並列に検索し、列挙した順に出力する
+	int DoGrepFilesParallel(
+		const SGrepSearchCond&	cond,
+		SGrepOutput&			out,
+		const std::vector<SGrepTargetFile>& vFiles,
+		const WCHAR*			pszPath,
+		const WCHAR*			pszBasePath,
+		const WCHAR*			pszFolder
+	);
+
+	// ファイル 1 つの検索を、ワーカーのスレッドで始める(ワーカーの列の末尾に足す)
+	void LaunchGrepFile(
+		std::deque<SGrepFileWorker>&	workers,
+		const SGrepSearchCond&	cond,
+		CBregexp*				pRegexp,
+		const std::atomic<bool>&	bCancel,
+		const SGrepTargetFile&	target,
+		const WCHAR*			pszPath,
+		const WCHAR*			pszBasePath,
+		const WCHAR*			pszFolder
+	);
+
+	// ワーカーが検索したファイル 1 つぶんの結果を、出力していない結果の末尾に足す
+	static void MergeGrepFileResult(
+		SGrepOutput&			out,
+		const GrepInfo&			gi,
+		std::wstring_view		baseFolder,
+		std::wstring_view		folder,
+		const SGrepFileResult&	result
+	);
+
 	// Grep実行
 	int DoGrepFile(
 		const SGrepSearchCond&	cond,
@@ -183,5 +302,6 @@ private:
 public: //$$ 仮
 	bool	m_bGrepMode = false;		//!< Grepモードか
 	bool	m_bGrepRunning = false;		//!< Grep処理中
+	size_t	m_nMaxGrepThreads = 8;		//!< 1 つのフォルダーの中のファイルを並列に検索するスレッドの数の上限(コア数とファイルの数でも抑える。1 なら直列)
 };
 #endif /* SAKURA_CGREPAGENT_97F2B632_71C8_4E4A_AC42_13A6098B248F_H_ */

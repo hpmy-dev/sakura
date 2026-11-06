@@ -8,6 +8,7 @@
 #include "grep/GrepTestSuite.hpp"
 
 #include "grep/CGrepEnumKeys.h"
+#include "agent/CSearchAgent.h"
 #include "types/CType.h"
 #include "charset/CCodeBase.h"
 #include "charset/CCodeFactory.h"
@@ -1969,6 +1970,21 @@ private:
 	Grep はファイルの 32 行ごと、Grep 置換は 1 行ごと、サブフォルダーに入る前に 1 回呼ばれる。
 */
 struct GrepProgressTest : public GrepCommandLineTest {
+	size_t oldMaxGrepThreads = 0;	//!< 変える前のスレッドの数の上限
+
+	//! FakeGrepProgress が呼ばれる順を確かめるので、直列にする
+	void SetUp() override
+	{
+		GrepCommandLineTest::SetUp();
+		oldMaxGrepThreads = std::exchange(CEditApp::getInstance()->m_pcGrepAgent->m_nMaxGrepThreads, 1);
+	}
+
+	//! スレッドの数の上限を戻す
+	void TearDown() override
+	{
+		CEditApp::getInstance()->m_pcGrepAgent->m_nMaxGrepThreads = oldMaxGrepThreads;
+		GrepCommandLineTest::TearDown();
+	}
 	//! 引数を解析し、progress を渡して Grep を実行する
 	DWORD GrepWith(FakeGrepProgress& progress, std::wstring_view key, std::wstring_view file, std::wstring_view opt, std::wstring_view extra = L"") const
 	{
@@ -2121,6 +2137,7 @@ TEST_F(GrepProgressTest, ShowsFolderAfterSubFolder)
 	@brief テスト用の結果の出力先
 
 	足された文字列を、足された順にためる。
+	IsDrawing() は drawing を返す(既定はリアルタイム表示でない)。
 */
 class FakeGrepOutput : public IGrepOutputTarget {
 public:
@@ -2131,7 +2148,7 @@ public:
 
 	bool IsDrawing() const override
 	{
-		return false;
+		return drawing;
 	}
 
 	//! 足された文字列をつないだもの
@@ -2145,6 +2162,7 @@ public:
 	}
 
 	std::vector<std::wstring> chunks;	//!< 足された文字列
+	bool drawing = false;				//!< IsDrawing() が返す値
 };
 
 /*!
@@ -2183,6 +2201,32 @@ TEST_F(GrepOutputTargetTest, SameTextAsDocument)
 	EXPECT_THAT(output.Text(), StrEq(GetDocumentText()));
 }
 
+/*!
+	リアルタイム表示で、検索したファイルの合計が 10000KB を超えて早めに出力しても、出力される文字列は変わらない
+
+	ファイルの大きさだけを 10000KB より大きくし、開けないようにしておく(中身を読ませず、時間をかけない)。
+	早めに出力するかは前回の出力からの時間にもよるので、出力が分かれたかは確かめない。
+*/
+TEST_F(GrepOutputTargetTest, SameTextWhenDrawingLargeFile)
+{
+	folder.AddFile(L"big.txt", "HIT\r\n");
+	const auto path = folder.Path() / L"big.txt";
+	std::filesystem::resize_file(path, 10001 * 1024);
+	const HANDLE hLocked = ::CreateFileW(path.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	ASSERT_THAT(hLocked, Ne(INVALID_HANDLE_VALUE));
+
+	const auto gi = ParseGrepCommandLine(Args(L"HIT", L"big.txt", L"X"));
+	FakeGrepOutput notDrawing;
+	EXPECT_THAT(GrepTo(notDrawing, gi), Eq(0u));
+	FakeGrepOutput drawing;
+	drawing.drawing = true;
+	EXPECT_THAT(GrepTo(drawing, gi), Eq(0u));
+	::CloseHandle(hLocked);
+
+	EXPECT_THAT(Contains(drawing.Text(), ResourcePrefix(STR_GREP_ERR_FILEOPEN)), IsTrue());
+	EXPECT_THAT(drawing.Text(), StrEq(notDrawing.Text()));
+}
+
 //! 中断したときの「中断しました」も出力先に足される
 TEST_F(GrepOutputTargetTest, SuspendedMessageToTarget)
 {
@@ -2215,6 +2259,155 @@ TEST_F(GrepOutputTargetTest, HwndErrorToTarget)
 	EXPECT_THAT(GrepTo(output, ParseGrepCommandLine(Args(L"HIT", L":HWND:0", L"X"))), Eq(0u));
 	EXPECT_THAT(Contains(output.Text(), L"HWND handle error."), IsTrue());
 	EXPECT_THAT(GetDocumentText(), ::testing::IsEmpty());
+}
+
+/*!
+	@brief 1 つのフォルダーの中のファイルを並列に検索するテスト
+
+	スレッドの数の上限を変えて Grep し、出力先に足された文字列を比べる。
+	上限 1 は直列。コアが 1 つの環境では、どちらも直列になる。
+*/
+struct GrepParallelTest : public GrepOutputTargetTest {
+	/*!
+		ファイルを 30 個ずつ、フォルダーとサブフォルダーに作る
+
+		HIT を含む行の数は、ファイルごとに 0〜3 行。
+	*/
+	void AddManyFiles() const
+	{
+		for (int i = 0; i < 30; ++i) {
+			std::string data;
+			for (int j = 0; j < i % 4; ++j) {
+				data += "HIT\r\n";
+			}
+			data += "none\r\n";
+			folder.AddFile(std::format(L"f{:02d}.txt", i), data);
+			folder.AddFile(std::format(LR"(sub\g{:02d}.txt)", i), data);
+		}
+	}
+
+	/*!
+		スレッドの数の上限を maxThreads にして Grep し、出力先に足された文字列を返す
+
+		@param[in]	maxThreads	スレッドの数の上限(1 なら直列)
+		@param[in]	key			検索キー
+		@param[in]	opt			-GOPT の値
+		@return 出力先に足された文字列
+	*/
+	std::wstring GrepText(size_t maxThreads, std::wstring_view key, std::wstring_view opt) const
+	{
+		auto& agent = *CEditApp::getInstance()->m_pcGrepAgent;
+		const auto oldMaxThreads = std::exchange(agent.m_nMaxGrepThreads, maxThreads);
+		FakeGrepProgress progress;
+		FakeGrepOutput output;
+		GrepTo(output, ParseGrepCommandLine(Args(key, L"*.txt", opt)), &progress);
+		agent.m_nMaxGrepThreads = oldMaxThreads;
+		return output.Text();
+	}
+};
+
+//! 出力形式・見出し・行の出し方が違っても、並列の結果は直列と同じ
+TEST_F(GrepParallelTest, SameAsSerial)
+{
+	AddManyFiles();
+	for (const auto opt : { L"XS", L"XS1BD", L"XS2D", L"XS2B", L"XS3BD", L"XSF", L"XSN" }) {
+		EXPECT_THAT(GrepText(4, L"HIT", opt), StrEq(GrepText(1, L"HIT", opt))) << opt;
+	}
+}
+
+//! 正規表現(ワーカーごとの正規表現)でも、並列の結果は直列と同じ
+TEST_F(GrepParallelTest, RegexpSameAsSerial)
+{
+	AddManyFiles();
+	EXPECT_THAT(GrepText(4, L"H.T", L"XSR"), StrEq(GrepText(1, L"H.T", L"XSR")));
+}
+
+//! 単語単位は直列のまま(上限を変えても結果は同じ)
+TEST_F(GrepParallelTest, WordOnlyStaysSerial)
+{
+	AddManyFiles();
+	EXPECT_THAT(GrepText(4, L"HIT", L"XSW"), StrEq(GrepText(1, L"HIT", L"XSW")));
+}
+
+//! 検索キーが空(ファイルの一覧)でも、並列の結果は直列と同じ
+TEST_F(GrepParallelTest, FileListSameAsSerial)
+{
+	AddManyFiles();
+	for (const auto opt : { L"XS", L"XS2BD", L"XS3D" }) {
+		EXPECT_THAT(GrepText(4, L"", opt), StrEq(GrepText(1, L"", opt))) << opt;
+	}
+}
+
+//! 最初の確認で中断すると、どのファイルの結果も出さずに「中断しました」を出す(ワーカーは止まる)
+TEST_F(GrepParallelTest, CancelBeforeFirstFile)
+{
+	AddManyFiles();
+	auto& agent = *CEditApp::getInstance()->m_pcGrepAgent;
+	const auto oldMaxThreads = std::exchange(agent.m_nMaxGrepThreads, 4);
+	FakeGrepProgress progress(1);
+	FakeGrepOutput output;
+	const auto hitCount = GrepTo(output, ParseGrepCommandLine(Args(L"HIT", L"*.txt", L"XS")), &progress);
+	agent.m_nMaxGrepThreads = oldMaxThreads;
+	EXPECT_THAT(hitCount, Eq(0u));
+	EXPECT_THAT(Contains(output.Text(), LS(STR_GREP_SUSPENDED)), IsTrue());
+	EXPECT_THAT(Contains(output.Text(), L"f01.txt"), IsFalse());
+}
+
+/*!
+	検索の途中で中断すると、「中断しました」を出し、すべてのファイルの結果は出さない(ワーカーは止まる)
+
+	メインスレッドは、ファイルごとに、ワーカーに渡す前と、結果を待つ前に中断を確かめる。
+	何回目の確認で中断しても同じになることを確かめる(どちらの確認でも中断する)。
+*/
+TEST_F(GrepParallelTest, CancelWhileSearching)
+{
+	AddManyFiles();
+	auto& agent = *CEditApp::getInstance()->m_pcGrepAgent;
+	const auto oldMaxThreads = std::exchange(agent.m_nMaxGrepThreads, 4);
+	for (int cancelAt = 2; cancelAt <= 6; ++cancelAt) {
+		FakeGrepProgress progress(cancelAt);
+		FakeGrepOutput output;
+		const auto hitCount = GrepTo(output, ParseGrepCommandLine(Args(L"HIT", L"*.txt", L"XS")), &progress);
+		EXPECT_THAT(hitCount, ::testing::Lt(86u)) << cancelAt;	// 中断しなければ 86 件(フォルダーとサブフォルダーで 43 件ずつ)
+		EXPECT_THAT(Contains(output.Text(), LS(STR_GREP_SUSPENDED)), IsTrue()) << cancelAt;
+	}
+	agent.m_nMaxGrepThreads = oldMaxThreads;
+}
+
+//! ワーカー用の進み具合は、毎回確かめる時機で、中断はフラグに従う。ファイル名を表示する時機は来ず、表示の関数は呼んでも何もしない
+TEST(GrepWorkerProgressTest, FollowsCancelFlag)
+{
+	std::atomic<bool> bCancel = false;
+	grep::CGrepWorkerProgress progress(bCancel);
+	EXPECT_THAT(progress.IsCheckTime(), IsTrue());
+	EXPECT_THAT(progress.IsFileNameTime(), IsFalse());
+	EXPECT_THAT(progress.IsCancelRequested(), IsFalse());
+	progress.ApplyRealTimeView();
+	progress.SetHitCount(1);
+	progress.SetFileName(L"a.txt");
+	progress.SetFolder(L"sub");
+	bCancel = true;
+	EXPECT_THAT(progress.IsCancelRequested(), IsTrue());
+}
+
+//! 編集中のテキストの検索(:HWND:)では、ワーカーごとの正規表現を作らない(直列のまま)
+TEST_F(GrepParallelTest, NoWorkerRegexpsForHwnd)
+{
+	CBregexp regexp;
+	const SSearchOption option(true, true, false);
+	CSearchStringPattern pattern;
+	ASSERT_THAT(pattern.SetPattern(nullptr, L"H.T", 3, option, &regexp), IsTrue());
+	EXPECT_THAT(grep::CreateWorkerRegexps(pattern, GrepInfo(), true, 4), ::testing::IsEmpty());
+}
+
+//! ワーカーごとの正規表現をコンパイルできなければ、1 つも作らない(直列で検索する)
+TEST_F(GrepParallelTest, NoWorkerRegexpsWhenCompileFails)
+{
+	CBregexp regexp;
+	const SSearchOption option(true, true, false);
+	CSearchStringPattern pattern;
+	ASSERT_THAT(pattern.SetPattern(nullptr, L"(", 1, option, &regexp), IsFalse());	// 正しくない正規表現(キーは覚えている)
+	EXPECT_THAT(grep::CreateWorkerRegexps(pattern, GrepInfo(), false, 4), ::testing::IsEmpty());
 }
 
 } // namespace grep_test
